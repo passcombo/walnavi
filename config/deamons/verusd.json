@@ -1,4 +1,4 @@
 {
-"deamon-path": "C:\Users\konrad\Desktop\VerusAgama\verusverus0607\Agama-Windows-v0.6.0-7\resources\app\assets\bin\win64\verusd\verusd.exe",
-"cli-path":"C:\Users\konrad\Desktop\VerusAgama\verusverus0607\Agama-Windows-v0.6.0-7\resources\app\assets\bin\win64\verusd\verus.exe"
+"deamon-path": "pathto\verusd.exe",
+"cli-path":"C:\pathto\verus.exe"
 }
