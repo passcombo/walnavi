@@ -1,0 +1,8 @@
+{
+"ac_name": "PIRATE",
+"ac_params":"-ac_supply=0 -ac_reward=25600000000 -ac_halving=77777 -ac_private=1",
+"addnode":["136.243.102.225", "78.47.205.239"],
+"datadir":"path to my data dir - avoid spaces",
+"deamon":"komodod.json",
+"fee":"0.0001"
+}
