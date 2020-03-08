@@ -79,26 +79,42 @@ if __name__=='__main__':
 
 	selcur,seldeam=load_settings.select_currency(auto_cur)
 	
-
-	ac_params_add_node=selcur['currency-conf']["ac_params"]
+	ac_params_add_node=''
+	
+	if selcur['currency-conf']["ac_params"].strip()!='':
+		ac_params_add_node=selcur['currency-conf']["ac_params"]
+		
 	if "addnode" in selcur['currency-conf']["addnode"]:
 		if len(selcur['currency-conf']["addnode"])>0:
 		
 			for an in selcur['currency-conf']["addnode"]:
 				ac_params_add_node+=' -addnode='+an
 		
+	FULL_DEAMON_PARAMS=[ seldeam['deamon-conf']['deamon-path'] ]
+	
+	if selcur['currency-conf']["ac_name"].strip() not in ['','VERUS']:
+		FULL_DEAMON_PARAMS=[ seldeam['deamon-conf']['deamon-path'] , "-ac_name="+selcur['currency-conf']["ac_name"]]
 		
-	FULL_DEAMON_PARAMS=[ seldeam['deamon-conf']['deamon-path'] , "-ac_name="+selcur['currency-conf']["ac_name"]] + ac_params_add_node.split(" ") #"komodod.exe"
+	
+	if len(ac_params_add_node.strip())>1:
+		FULL_DEAMON_PARAMS+= ac_params_add_node.split(" ") #"komodod.exe"
 
 	
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust data dir
 		FULL_DEAMON_PARAMS+=['-datadir='+selcur['currency-conf']["datadir"]]
 
-	CLI_STR=seldeam['deamon-conf']["cli-path"]+" -ac_name="+selcur['currency-conf']["ac_name"]
+	CLI_STR=seldeam['deamon-conf']["cli-path"]
+	if selcur['currency-conf']["ac_name"].strip() not in ['','VERUS']:
+		CLI_STR+=" -ac_name="+selcur['currency-conf']["ac_name"]
 
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust cli for specified path
 		CLI_STR+=' -datadir="'+selcur['currency-conf']["datadir"]+'"'
 
+	# print(FULL_DEAMON_PARAMS)
+	# print(CLI_STR)
+	# print(selcur)
+	# exit()
+		
 	json_conf["cur_path_addr_book"]=selcur["path"].replace('.json','.addr').replace('currencies','addrbooks')
 	#json_conf["cur_path_addr_book"] addrbooks.XXXX.addr
 	
@@ -123,7 +139,7 @@ if __name__=='__main__':
 		subprocess.Popen( FULL_DEAMON_PARAMS) # stdout , stdout=DEVNULL 
 		deamon_started=True
 		
-	SLEEP_TIME=3
+	SLEEP_TIME=4
 	time.sleep(SLEEP_TIME)
 	max_iter=777
 	deamon_warning="make sure server is running and you are connecting to the correct RPC port"
@@ -138,8 +154,12 @@ if __name__=='__main__':
 		
 			zxc=subprocess.getoutput(CLI_STR+" getinfo") # check wallet stat synced
 			zxc=str(zxc)
+			if 'error message:' in zxc:
+				asdf=zxc.split('error message:')
+				if len(asdf)>0:
+					print(asdf[1])
 			# print('****** ZXC \n\n\n ******** \n',zxc)
-			
+			# exit()
 			if 'is not recognized' in zxc or 'exe' in zxc:
 				print('Command ['+CLI_STR+" getinfo"+'] not recognized - wrong path ?')
 			
@@ -181,7 +201,7 @@ if __name__=='__main__':
 					zxc=str(zxc)
 					y = json.loads(zxc)				
 				
-				if y["synced"]==True:
+				if y["longestchain"]==y["blocks"] : #y["synced"]==True:
 					print('\nWALLET SYNCED!\n')
 					break
 				else:
@@ -485,11 +505,3 @@ if __name__=='__main__':
 		if selected_mode=='deamon':
 			print('Next iteration')	
 		zxc=str(subprocess.getoutput(CLI_STR+" getinfo"))
-
-
-		
-		
-		
-
-
-	
