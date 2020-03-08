@@ -1040,8 +1040,10 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		
 		tmplst=CLI_STR.split(" ")
 		
-		tmplst=[tmplst[0],tmplst[1],ucmd]
-		
+		if len(tmplst)>1:
+			tmplst=[tmplst[0],tmplst[1],ucmd]
+		else:
+			tmplst=[tmplst[0], ucmd]
 		# tmplst=CLI_STR+" "+ucmd
 		# tmplst=tmplst.split(" ")
 		# print('tmplst',tmplst)
