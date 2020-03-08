@@ -1,24 +1,4 @@
-# accounting:
-# sending tx - save in book with txid, amount, destiny addr, out addr 
-# current tx - count as income info of time get from : gettransaction "txid"
-# Result:
-# {
-  # "amount" : x.xxx,        (numeric) The transaction amount in ZEC
-  # "confirmations" : n,     (numeric) The number of confirmations
-  # "blockindex" : xx,       (numeric) The block index
-  # "blocktime" : ttt,       (numeric) The time in seconds since epoch (1 Jan 1970 GMT)
-  # "time" : ttt,            (numeric) The transaction time in seconds since epoch (1 Jan 1970 GMT)
-  # "timereceived" : ttt,    (numeric) The time received in seconds since epoch (1 Jan 1970 GMT)
-  # "details" : [
-    # {
-      # "account" : "accountname",  (string) DEPRECATED. The account name involved in the transaction, can be "" for the default account.
-      # "address" : "zcashaddress",   (string) The Zcash address involved in the transaction
-      # "category" : "send|receive",    (string) The category, either 'send' or 'receive'
-      # "amount" : x.xxx                  (numeric) The amount in ZEC
-      # "vout" : n,                       (numeric) the vout value
-    # }
-    # ,...
-  # ],
+
 
 import os
 import smtplib
@@ -732,12 +712,18 @@ def list_utxo(CLI_STR):
 		tmpaddr=adrlist[ii]
 		strprint+=str(ind)+' Total '+str(amlist[ii])+' of addr. '+tmpaddr+'\n'
 		tmpobj=addr_amount_dict[tmpaddr]
+		# print(i,tmpaddr,tmpobj)
 		ind+=1
-		for j in sorted(enumerate(tmpobj["utxo_conf_list"]), key=lambda y:y[1], reverse=True):
-			jj=j[0]
-			# print(tmpobj)
-			strprint+=' - conf. '+str(tmpobj["utxo"][jj]["confirmations"])+' amount '+str(tmpobj["utxo"][jj]["amount"])+' txid '+tmpobj["utxo"][jj]["txid"]+'\n'
-		strprint+=' -- utxo count '+str(len(tmpobj["utxo_conf_list"]))+'\n'
+		
+		if "utxo_conf_list" in tmpobj:
+		
+			for j in sorted(enumerate(tmpobj["utxo_conf_list"]), key=lambda y:y[1], reverse=True):
+				jj=j[0]
+				# print(tmpobj)
+				strprint+=' - conf. '+str(tmpobj["utxo"][jj]["confirmations"])+' amount '+str(tmpobj["utxo"][jj]["amount"])+' txid '+tmpobj["utxo"][jj]["txid"]+'\n'
+			strprint+=' -- utxo count '+str(len(tmpobj["utxo_conf_list"]))+'\n'
+		else:
+			strprint+=' -- no utxo yet\n'
 	
 	
 	return strprint
