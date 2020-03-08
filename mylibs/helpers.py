@@ -87,6 +87,7 @@ def coin_autodetect():
 	cc=0
 	lastproc=''
 	
+	
 	for proc in psutil.process_iter(): # wallet config edit make sense only when komodod not running
 		try:
 		
@@ -99,13 +100,17 @@ def coin_autodetect():
 		except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
 			x=1
 
-	if cc==1: # extract ac name
 	
-		strm=''.join(lastproc).split('-ac_name=')
 		
+	if 'komodod' in ''.join(lastproc) and cc==1: # extract ac name
+		
+		strm=''.join(lastproc).split('-ac_name=')
 		splitminus=strm[1].split('-')
 		
 		return splitminus[0]
+		
+	elif 'verusd' in ''.join(lastproc) and cc==1:
+		return 'VERUS'
 	
 	return ''
 	
