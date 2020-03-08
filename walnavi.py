@@ -375,12 +375,16 @@ if __name__=='__main__':
 					if cmd!='':
 						
 						multilinespl=cmd.split('\n')
+						# print('multilinespl',multilinespl)
 						cmd=''
 						found_cmd=False
 						for mm in multilinespl:
+						
+							# print('mm',mm)
 							if len(mm)>1:
-								cmds=cmd.split()
-								if cmds[0].lower() in ['confirm','confirmed'] and toconfstr!='':
+								cmds=mm.split(' ')
+								# print('cmds',cmds)
+								if len(cmds)>0 and cmds[0].lower() in ['confirm','confirmed'] and toconfstr!='':
 									cmd=toconfstr
 									found_cmd=True
 									break
