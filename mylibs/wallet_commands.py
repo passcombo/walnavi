@@ -11,7 +11,8 @@ from pandas import DataFrame
 import pandas
 import subprocess
 import json
-import mylibs.helpers as helpers
+import mylibs.ioprocessing as iop
+# import mylibs.helpers as helpers
 
 import re
 
@@ -123,44 +124,77 @@ def log_txid(strtxid,currency_name ): # saving tx done
 	
 
 	
+# list unspend general -> iterate through with addr?? do I need adddr anyway ?
+# dict_unconf_tx_all[tmpadr]={'txid':tmptxid ,'amount':tmpam} = unconf_tx_all(CLI_STR,max_conf='100')
+def unconf_tx_all(CLI_STR,max_conf='100'):
 	
+	dict_unconf_tx_all={}
+	cmdloc=['z_listunspent 0 '+max_conf+' true','listunspent 0 '+max_conf]
+	
+	for ccc in cmdloc:
+	
+		tmp1=subprocess.getoutput(CLI_STR+" "+ccc )
+		try:
+			js1=json.loads(tmp1)
+			# print('139',js1)
+			for jj in js1:
+				tmpadr=jj["address"]
+				tmpam=jj["amount"]
+				tmptxid=jj["txid"]
+				tmpgen='False'
+				
+				# print('146',jj)
+				if 'generated' in jj:
+					tmpgen=str(jj["generated"])
+				
+				if tmpadr not in dict_unconf_tx_all:
+					dict_unconf_tx_all[tmpadr]=[]
+				
+				dict_unconf_tx_all[tmpadr].append({'txid':tmptxid ,'amount':tmpam, 'staked':tmpgen})
+				
+		except:
+			pass
+	
+	return dict_unconf_tx_all
+	
+	
+
+
+# dict_income, print_str=check_for_new_tx(CLI_STR,currency_name,max_conf='100')
 def check_for_new_tx(CLI_STR,currency_name): #{'txid':tt["txid"] ,'amount':tt["amount"]}
 	
 	dict_income={}
-	alias_map=get_wallet(CLI_STR,True)
-	
 	print_str=''
+	udi=unconf_tx_all(CLI_STR)
+	# print(udi)
 	
-	for aa in alias_map.keys(): # for each addr:
-		send_js_str=''
-		if aa[0]=='z':
-			send_js_str='z_listunspent 0 10 true ["'+str(aa)+'"]'
-		else:
-			send_js_str='listunspent 0 10 ["'+str(aa)+'"]'
-		
-		send_js_str=send_js_str.replace('"','\\"').replace("]",']"').replace("[",'"[')
-		
-		# print('send_js_str',send_js_str)
-		zxc=subprocess.getoutput(CLI_STR+" "+send_js_str )
-		# print(zxc)
-		if 'txid' not in zxc:
-			continue
-		# print('jest')
-		inc=json.loads(zxc)
-		
-		for tt in inc: # multiple incoming per address:
-			
-			if is_new_txid(tt["txid"],currency_name):
-			
-				log_txid(tt["txid"],currency_name)
+	addr_list, addr_type=get_all_addr(CLI_STR)
+	alias_map=address_aliases(addr_list)
+
+	
+	for aa, dd in udi.items():
+		# print('174',dd)
+		for vv in dd:
+			# print('176',vv,vv["txid"])
+			if is_new_txid(vv["txid"],currency_name):
 				
-				dict_income[aa]={'txid':tt["txid"] ,'amount':tt["amount"]}
-				print_str+='Amount '+str(tt["amount"])+' to address '+aa+'\n'
+				log_txid(vv["txid"],currency_name)
 			
+				dict_income[aa]={'txid':vv["txid"] ,'amount':vv["amount"]}
+				staked=''
+				if vv['staked']=='True':
+					staked='[STAKED] '
+				
+				print_str+='Amount '+staked+str(vv["amount"])+' to address '+aa+' alias '+alias_map[aa]+'\n'+'  txid '+vv["txid"]+'\n\n' #
+				
+					
+				
+	
 	if print_str!='':
 		print_str='Incoming transactions:\n\n'+print_str+'\n\n'
 		
 	return dict_income, print_str
+	
 
 
 
@@ -295,7 +329,7 @@ def get_unconfirmed(CLI_STR,aa): # ttype z or t
 		
 	send_js_str=send_js_str.replace('"','\\"').replace("]",']"').replace("[",'"[')
 	zxc=subprocess.getoutput(CLI_STR+" "+send_js_str )
-	# print(zxc)
+	
 	inc=json.loads(zxc)
 
 	suma=0
@@ -315,7 +349,7 @@ def get_unconfirmed_balance(CLI_STR):
 	
 	dict_income={}
 	alias_map=get_wallet(CLI_STR,True)
-	# alias_map=address_aliases()
+	
 	for aa in alias_map.keys(): # for each addr:
 		send_js_str=''
 		if aa[0]=='z':
@@ -341,13 +375,38 @@ def get_unconfirmed_balance(CLI_STR):
 		
 	return dict_income
 
-
-
 	
-	
-def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=False):
+def get_all_addr(CLI_STR): # addr_list, addr_type=get_all_addr(CLI_STR) -> alias_map=address_aliases(addr_list)
 
 	addr_list=[]
+	addr_types={}
+	
+	r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
+	a1=json.loads(r1)	
+	
+	for aa in a1:
+		addr_list.append(aa)
+		addr_types[aa]='t'
+		
+	r2=subprocess.getoutput(CLI_STR+" "+"z_listaddresses")
+	a2=json.loads(r2)
+	
+	for aa in a2:
+		addr_list.append(aa)
+		addr_types[aa]='z'
+		
+	return addr_list, addr_types
+	
+	
+
+def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=False):
+
+	addr_list, addr_type=get_all_addr(CLI_STR)
+	alias_map=address_aliases(addr_list)
+	
+	if only_addr_list:
+		return alias_map
+	
 	addr_amount_dict={}
 	total_balance=float(0)
 	total_conf=float(0)
@@ -356,19 +415,22 @@ def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=Fals
 	amounts=[]
 	amounts_conf=[]
 	amounts_unc=[]
-	r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
 	
-	a1=json.loads(r1)
+	dict_unconf_tx_all= unconf_tx_all(CLI_STR,max_conf='0') #[tmpadr]={'txid':tmptxid ,'amount':tmpam} 
 	
-	list_unspent=all_t_addr_list(CLI_STR) #json.loads( subprocess.getoutput(CLI_STR+" "+'listunspent') ) 
+	for aa in addr_list:
 	
-	a1=get_t_addr_json(a1,list_unspent)
-	# print(606,a1)
-	
-	for aa in a1:
-		addr_list.append(aa)
-		amount_init=get_t_balance(CLI_STR,aa)
-		am_unc=get_unconfirmed(CLI_STR,aa)
+		amount_init=0
+		if addr_type[aa]=='t':
+			amount_init=get_t_balance(CLI_STR,aa)
+		else:
+			amount_init=float(subprocess.getoutput(CLI_STR+" "+'z_getbalance '+aa))
+		
+		am_unc=0
+		if aa in dict_unconf_tx_all:
+			
+			for vv in dict_unconf_tx_all[aa]:
+				am_unc+=vv['amount'] #get_unconfirmed(CLI_STR,aa)dict_unconf_tx_all[aa]
 		
 		addr_amount_dict[aa]={'confirmed':amount_init,'unconfirmed':am_unc}
 		amounts_unc.append(am_unc)
@@ -387,33 +449,9 @@ def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=Fals
 		total_balance+=am_unc
 		total_unconf+=am_unc
 		
-	r2=subprocess.getoutput(CLI_STR+" "+"z_listaddresses")
-	
-	a1=json.loads(r2)
-	
-	for aa in a1:
-		addr_list.append(aa)
-		tmp=subprocess.getoutput(CLI_STR+" "+'z_getbalance '+aa)
-		tmp=float(tmp) #+float(random.random())
-		am_unc=get_unconfirmed(CLI_STR,aa)
-		addr_amount_dict[aa]={'confirmed':tmp,'unconfirmed':am_unc}
-		
-		total_balance+=tmp+am_unc
-		total_conf+=tmp
-		total_unconf+=am_unc
-		# wl.append("__alias__{:.8f}".format(tmp)+" "+aa)
-		wl.append({'addr':aa,'confirmed':tmp, 'unconfirmed':am_unc})
-		amounts.append(tmp+am_unc)
-		amounts_conf.append(tmp)	
-		amounts_unc.append(am_unc)
-		
-	alias_map=address_aliases(addr_list)
 	
 	if both:
 		return alias_map, addr_amount_dict
-	
-	if only_addr_list:
-		return alias_map
 		
 	if or_addr_amount_dict:
 		return addr_amount_dict
@@ -433,10 +471,9 @@ def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=Fals
 			wl_str.append("   - confirmed {:.8f}".format(wl[ii]['confirmed']) )
 			wl_str.append("   - unconfirmed {:.8f}".format(wl[ii]['unconfirmed']) )
 	
-	# wl=[wl[i[0]] for i in sorted(enumerate(amounts), key=lambda x:x[1], reverse=True)]
-	
-	
 	return '\n'.join(wl_str)
+	
+	
 	
 	
 	
@@ -481,8 +518,7 @@ def all_t_addr_list(CLI_STR):
 	# print(v1)
 	tmpaddr=[]
 	for zz in v1:
-		# print(zz["address"])
-		# lz.append(zz["address"]+' conf='+str(zz["confirmations"])+' amount='+str(zz["amount"]))
+		
 		initamount=float(0)
 		if len(luaggr)>0:
 			for kk,lu in luaggr.items():
@@ -569,7 +605,7 @@ def isaddrvalid(CLI_STR,addr):
 # if from list =[all] - take all
 # if to_addr=any - take any z addr, if nonexistent - create one
 # if list = aliast - replace with addr				
-def merge_to(CLI_STR,from_dict,to_addr): #z_mergetoaddress '["ANY_SAPLING", "t1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd"]' 
+def merge_to(CLI_STR,from_dict,to_addr): 
 	
 	alias_map=address_aliases(get_wallet(CLI_STR,True))
 	
@@ -744,64 +780,13 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 
 	currency_name=cur_name(DEAMON_DEFAULTS)
 
-	ucmd=helpers.fix_equal(ucmd)
+	ucmd=iop.fix_equal(ucmd)
 	
 	cmdsplit=ucmd.lower().split()
 	
 	if cmdsplit[0]=='merge': # in ucmd.lower():
 		print()
-		# fromobj=helpers.get_key_eq_value(ucmd,'from')
-		# if "is missing in" in fromobj:
-			# return fromobj
-			
-		# if fromobj.lower()=='all':
-			# fromobj=get_wallet(CLI_STR,True)	
-		# else:
-			# flist=fromobj.split(',')
-			# fromobj={}
-			# for ff in flist:
-				# fromobj[ff]=ff
 		
-		
-		# toobj=helpers.get_key_eq_value(ucmd,'to')
-		# if "is missing in" in toobj:
-			# return toobj
-			
-		# if toobj.lower()=='any':
-			# toobj=get_any_zaddr(FEE,CLI_STR)
-			# print('any z addr',toobj)
-			
-		# return merge_to(CLI_STR,fromobj,toobj)
-	
-	# elif "history"==cmdsplit[0]: # in ucmd.lower(): # DODAC ZADDR + memo
-	
-		# if len(cmdsplit)==1: #ucmd.strip()=="history":
-			# print('show total history')
-			
-			# lz=get_taddr_history(CLI_STR)
-			# return 'Transactions for addr:\n'+('\n'.join(lz) )
-		# else:
-			# print('history for selected addr')
-			# addr=cmdsplit[0][1]
-			
-			# alias_map=address_aliases(get_wallet(CLI_STR,True))
-			# if addr in alias_map.values(): # addr_to is alias!
-				# print(' alias detected')
-				# addr=aliast_to_addr(alias_map,addr)
-			
-			# v12,isz=isaddrvalid(CLI_STR,addr)
-			
-			# if v12!=True: #v1['isvalid']!=True and v2['isvalid']!=True:
-				
-				# daddr=get_wallet(CLI_STR,True)
-				# laddr=[str(xx)+' alias:['+str(daddr[xx])+']'   for xx in daddr]
-				# return 'addr for history invalid, try one of these:\n'+('\n'.join(laddr))
-				
-			# elif isz: #v1['isvalid']:
-				# return get_zaddr_history(CLI_STR,addr) # z_listreceivedbyaddress
-			# else:
-				# lz=get_taddr_history(CLI_STR,addr)
-				# return 'Transactions for addr:\n'+('\n'.join(lz) )					
 
 	elif "status"==cmdsplit[0]:
 			
@@ -1033,6 +1018,17 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		tmp=subprocess.getoutput(CLI_STR+" "+"getnewaddress" )
 		return ucmd+" "+str(tmp)
 
+	elif ucmd.lower()=="stake":
+		print("Turning staking ON ... ")
+		opstat=subprocess.getoutput(CLI_STR+" setgenerate true 0")
+		time.sleep(7)
+		# print(opstat)
+		return 'Staking ON'
+		
+	elif ucmd.lower()=="stakestop":
+		opstat=subprocess.getoutput(CLI_STR+" setgenerate false")
+		# print(opstat)
+		return 'Staking OFF'
 
 	elif ucmd.lower()=="stop":
 		# print(currency_name)
@@ -1054,112 +1050,6 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		
 		return "Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... "
 		
-	# elif ucmd.lower()=="incoming": # incoming balance / unconfirmed
-	
-		# dict_income=get_unconfirmed_balance(CLI_STR)
-		
-		# return 'Incoming balance: '+str(dict_income)
-	
-		
-	# elif ucmd.lower()=="listunconfirmed": # OFF - asked how to check t unconfirmed balance ... 
-	
-		
-	
-		# mempool_list=subprocess.getoutput(CLI_STR+" "+"getrawmempool" )
-		# a1=json.loads(mempool_list)
-		# resp=''
-		# for aa in a1:
-		
-			# tmp=subprocess.getoutput(CLI_STR+" "+'getrawtransaction '+aa+" 1")
-			# tmpj=json.loads(tmp)
-			
-			# addtx=False
-			
-			# print(tmpj.keys())
-			# for anykey in tmpj.keys():
-				# if anykey not in ['vin','vout']:
-					# continue
-					
-				# if len(tmpj[anykey])==0:
-					# continue
-					
-				# print('anykey',anykey,tmpj[anykey],type(tmpj[anykey]))
-				
-				# if "address" in str(tmpj[anykey]) and "RMQGPBxmBHnMWi3o6RjBYjPRoQqmQobP1f" in str(tmpj[anykey]):
-					# print('anykey',anykey,tmpj[anykey])
-				
-			# continue
-			
-			# for vin in tmpj["vin"]:
-				
-				# if "address" in vin.keys():
-					
-					# if vin["address"] in alias_map.keys():
-					
-						# addtx=True
-						# break
-			
-				# if addtx==False:
-					# for vo in tmpj["vout"]:
-						# if "addresses" in vo.keys():
-							# tmparr=vo["addresses"]
-							# for ttt in tmparr:
-								# if ttt in alias_map.keys():
-								
-									# addtx=True
-									# break
-						# if addtx:
-							# break
-							
-				# if addtx:
-					# break
-					
-			# print('tmp',tmp)		
-			# if addtx:
-				# resp+=tmp+'\n'
-				
-			# addtx=False
-			# tmp=subprocess.getoutput(CLI_STR+" "+'z_viewtransaction '+aa)
-			
-			# if tmp==None:
-				# continue
-			# elif 'error' in tmp:
-				# continue
-			
-			
-			# tmpj=json.loads(tmp)
-			# for vo in tmpj["outputs"]:
-				# if "address" in vo.keys():
-					# tmparr=vo["address"]
-					
-					# if tmparr in alias_map.keys():
-						# dict_income.append({ "to_addr":vo["address"], "amount":vo["value"], "from_addr":tmpj["spends"][0]["address"] })
-						# addtx=True
-						
-			# tmp=subprocess.getoutput(CLI_STR+" "+'viewtransaction '+aa)
-			
-			# if tmp==None:
-				# continue
-			# elif 'error' in tmp:
-				# continue
-			
-			# tmpj=json.loads(tmp)
-			# for vo in tmpj["outputs"]:
-				# if "address" in vo.keys():
-					# tmparr=vo["address"]
-					# if tmparr in alias_map.keys():
-						# dict_income.append({ "to_addr":vo["address"], "amount":vo["value"], "from_addr":tmpj["spends"][0]["address"] })
-						# addtx=True
-						
-		
-		# print(dict_income) # ok to daje poprawna wartosc, brakuje wartosci z t addr 
-		# return str(dict_income)	
-	
-	# elif "getrawtransaction" in ucmd.lower():	
-		# return subprocess.getoutput(CLI_STR+" "+ucmd)
-		
-	# elif "z_getoperationstatus" in ucmd.lower():	
-		# return subprocess.getoutput(CLI_STR+" "+ucmd)
 		
 	else:
 		print("else")
