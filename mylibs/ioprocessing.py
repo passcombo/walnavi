@@ -25,10 +25,94 @@ import sys, multiprocessing
 
 
 
+def check_deamon_running(deamon_cmd):
+
+	is_komodod_running=False
+	tmppid=-1
+	
+	for proc in psutil.process_iter(): # wallet config edit make sense only when komodod not running
+		try:
+			# Get process name & pid from process object.
+			processName = proc.name()
+			processID = proc.pid
+			
+			if ''.join(proc.cmdline())==deamon_cmd: #processName in deamon_cmd: # in processName:
+				zxc=proc.as_dict(attrs=['pid', 'memory_percent', 'name', 'cpu_times', 'create_time', 'memory_info', 'cmdline','cwd'])
+				print('\n\n\n NOTE: komodod already running',proc.exe(),'\n\n\n' ) # , ' ::: ', processID,zxc)
+				
+				is_komodod_running=True
+				tmppid=zxc['pid']
+				break
+					
+		except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+			x=1
+			
+	return is_komodod_running, tmppid
+
+
+def ask_mode(): # mode = wallet or deamon
+
+	options=['wallet','deamon','wal','de']
+	# print(colored('hello', 'red'))
+	owc='x'
+	while owc not in options: #!='wallet' and owc != 'n':
+		owc=input("\nSelect mode: ['"+colored('wallet', 'green')+"' or '"+colored('deamon', 'cyan')+"'] ? ") #"\nSelect mode: ['wallet' or 'deamon'] ? ") 
+		
+		if owc=='q':
+			exit()
+		
+		if owc not in options:
+			print(colored("Wrong value, try again", 'red',attrs=['bold'])) #, 'blink'
+			
+	if owc=='wal':
+		return 'wallet'
+	elif owc=='de':
+		return 'deamon'
+		
+	return owc
+
+
+
+			
+def coin_autodetect():
+
+	deamons_list=['komodod','verusd']
+	cc=0
+	lastproc=''
+	
+	
+	for proc in psutil.process_iter(): # wallet config edit make sense only when komodod not running
+		try:
+		
+			processName = proc.name().replace('.exe','')
+			if processName in deamons_list:
+				lastproc=proc.cmdline()
+				# print('got process ',proc.cmdline())
+				cc+=1
+					
+		except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+			x=1
+
+	
+		
+	if 'komodod' in ''.join(lastproc) and cc==1: # extract ac name
+		
+		strm=''.join(lastproc).split('-ac_name=')
+		splitminus=strm[1].split('-')
+		
+		return splitminus[0]
+		
+	elif 'verusd' in ''.join(lastproc) and cc==1:
+		return 'VERUS'
+	
+	return ''
+
+
 def input_process(stdin_fd, sq, sstr):
 	sys.stdin = os.fdopen(stdin_fd)
+	print(colored(sstr,'red',attrs=['bold']))
 	try:
-		inp = input(colored(sstr,'red',attrs=['bold']))
+		inp = input()
 		sq.put(inp)
 	except:
 		sq.put('')
@@ -42,6 +126,7 @@ def input_in_time(sstr, max_time_sec):
 	t = time.time()
 	inp = ''
 	iterc=0
+	
 	while True:
 	
 		if not sq.empty():
@@ -53,8 +138,8 @@ def input_in_time(sstr, max_time_sec):
 			break
 		
 		tleft=int( (t+max_time_sec)-time.time())
-		if tleft<max_time_sec-1 and tleft>2 and iterc%4==0:
-			print(colored('\n  ...time left '+str(tleft)+'s\n'+sstr,'red',attrs=['bold']))
+		if tleft<max_time_sec-1 and tleft>2 and iterc%10==0:
+			print(colored('...time left '+str(tleft)+'s: ','red',attrs=['bold']))
 			
 		time.sleep(min(2,tleft))
 		iterc+=1
@@ -73,25 +158,6 @@ def input_in_time(sstr, max_time_sec):
 		exit()
 		
 	return inp
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -503,6 +569,12 @@ def xtract_email(strt):
 		return x[0]
 	else:
 		return strt
+
+
+def now_time_str():
+	time_format='%Y-%m-%dh%Hm%Ms%S'
+	return datetime.datetime.today().strftime(time_format)
+
 		
 
 
@@ -585,14 +657,20 @@ def check_already_running(): # ...
 			pass
 
 	if script_counts>1:
-		helpers.log_file(log_file_path,'\n\n__ '+main_script_name+' ALREADY RUNNING __\n\n')
+		# helpers.log_file(log_file_path,'\n\n__ '+main_script_name+' ALREADY RUNNING __\n\n')
+		print('\n\n__ '+main_script_name+' ALREADY RUNNING __\n\n')
 		exit()
 	else:
 		print('Starting...')
 		
 		
 		
-		
+
+	
+def fix_equal(strt): # replace " = " with "="
+	x=clear_whites(strt)
+	x=x.replace('= ','=').replace(' =','=')
+	return x		
 
 
 def clear_whites(strt): # replace multiple spaces with single space
@@ -838,25 +916,7 @@ def ensure_clear_path(ppath):
 	if os.path.exists(ppath):
 		os.remove(ppath)	
 
-# [ok]test 1: normal msg using attachment (correct encrypted final? load att works ?)
-# [ok]test 2: body msg
-# test 3: diff att - pubkey
-# test 4: diff att but still txt
-# test 5: diff att image ... 		
 		
-		
-		
-### replace decr_msg to decrypt file and ... ?
-# if arg = file path - decrypt file
-# if content - create file to decrypt 
-# w zasadzie to plik w folderze archive powinien zostac od razu ponownie zaszyfrowany po skopiowaniu! 
-
-# teraz test czy ok - pobiera plik, dekoduje, ponownie szyfruje, zostawia tylko kopie zaszyfrowana lokalnie
-# a ponowne ladowanie powinno byc load from archive... ?
-
-# todo: wylaczyc save t oarchive w decr msg oraz decr attach
-# test load att oraz load decr msg
-# ... 
 
 def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 
@@ -948,136 +1008,6 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 
 
 		
-def old_decr_msg(msg_cont,gpgpass='',aes256pp=''): #,msg_from
-
-	aes256pp_ajd=aes256pp #"'"+aes256pp+"'"
-
-	decr_msg_str_tmp=''
-	tryaes=False
-	
-
-	if type(msg_cont)!=type([]) and os.path.exists(msg_cont): # if it is path- try decrypt file
-		
-		decr_msg_str_tmp='Failed to decrypt file ['+msg_cont+']'
-		
-		tmpdecr=''		
-		if '.pgpkey' in msg_cont:
-			headtail=os.path.split(msg_cont)
-			tmpdecr=os.path.join('my_files',headtail[1].replace('.pgpkey.pgp','.pgpkey')) #'from_pgp_'+msg_cont.replace('.pgp','')
-		else:
-			tmpdecr='from_pgp_'+msg_cont.replace('.pgp','')	
-		
-		if aes256pp==''  or aes256pp=='pgp': # if no decrypt pass - first try pgp
-			try:
-				gpgstr="gpg -o "+tmpdecr+" -d "+msg_cont
-				if gpgpass!='':
-					gpgstr="gpg --pinentry loopback --passphrase "+gpgpass+" -o "+tmpdecr+" -d "+msg_cont
-					
-				ensure_clear_path(tmpdecr)
-					
-				str_rep=subprocess.getoutput(gpgstr)
-				if '@' in str_rep: 
-					print('Decrypted using asymetric key')
-					decr_msg_str_tmp='Decrypted file ['+msg_cont+'] to ['+tmpdecr+']\n Delete the file after usage to stay safe!'
-				else:
-					tryaes=True
-			except:
-				tryaes=True
-		else:
-			tryaes=True
-		
-		if tryaes:
-			
-			
-			if aes256pp=='':
-				# print('input aes256 password')
-				aes256pp=input_prompt(propmtstr="Enter password (AES256) to decrypt message: ", confirm=False, soft_quite=True)
-			
-			if aes256pp!='':
-				gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+msg_cont
-				
-				ensure_clear_path(tmpdecr)
-				str_rep=subprocess.getoutput(gpgstr)
-				
-				# if '@' in str_rep:
-				decr_msg_str_tmp='Decrypted file ['+msg_cont+'] to ['+tmpdecr+'] Delete the file after usage to stay safe!'
-				# decr_msg_str_tmp=readfile(tmpdecr)
-				print('Decrypted using password')
-			else:
-				print("No password provided - quit decryption...")
-				
-		print('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n')
-		# return decr_msg_str_tmp
-	else:
-		# print('decrypting file ...')
-		for cc in msg_cont:
-		# if True:
-			# cc=msg_cont
-		
-			tryaes=False
-			
-			tmpn=createtmpfile(encr_str=cc)
-			tmpdecr=os.path.join('tmp','z.txt')
-			# print('cc',cc)
-			str_rep=''
-			
-			if aes256pp=='' or aes256pp=='pgp': # if no decrypt pass - first try pgp
-				
-				try:
-				# if True:
-					gpgstr="gpg -o "+tmpdecr+" -d "+tmpn
-					if gpgpass!='':
-						gpgstr="gpg --pinentry loopback --passphrase "+gpgpass+" -o "+tmpdecr+" -d "+tmpn
-					# print('gpgstr rsa',gpgstr)
-					ensure_clear_path(tmpdecr)
-					str_rep=subprocess.getoutput(gpgstr)
-					# print('rsa',str_rep)
-					if '@' in str_rep: # found email related to key and decrypted - assumption
-						# read file and return
-						decr_msg_str_tmp=readfile(tmpdecr)
-						print('Decrypted using asymetric key')
-					else:
-						tryaes=True
-						# print('tryaes rsa',str_rep)
-				except:
-					tryaes=True
-					# print('try aes failed 711')
-					# print('except rsa',str_rep)
-			
-			else:
-				tryaes=True
-				
-			if tryaes:
-			
-				# print('try aes')
-				if aes256pp=='':
-					# print('input aes256 password')
-					aes256pp=input_prompt(propmtstr="Enter password (AES256) to decrypt message: ", confirm=False, soft_quite=True)
-			
-				if aes256pp!='':
-					gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+tmpn
-					# print(gpgstr)
-					ensure_clear_path(tmpdecr)
-					str_rep=subprocess.getoutput(gpgstr)
-					# print('aes',str_rep)
-					
-					# if '@' in str_rep:
-					decr_msg_str_tmp=readfile(tmpdecr)
-					print('Decrypted using password')
-						# print('Decrypted using symetric key')
-				else:
-					print("No password provided - quit decryption...")	
-					
-			print('\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n')
-				
-		createtmpfile() #overwrite
-		
-	if os.path.exists(tmpdecr):
-		os.remove(tmpdecr)
-	
-	return '' # '\n------- DECRYPTED MESSAGE START -------\n'+decr_msg_str_tmp.replace(lorem_ipsum(),'')+'\n------- DECRYPTED MESSAGE END -------\n'
-	
-	
 	
 	
 
