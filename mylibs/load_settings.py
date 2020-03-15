@@ -5,7 +5,7 @@
 import os
 import subprocess
 import json
-import mylibs.helpers as helpers
+# import mylibs.helpers as helpers
 import mylibs.ioprocessing as iop
 import mylibs.wallet_commands as wallet_commands
 
@@ -356,7 +356,7 @@ def select_currency(autodetect=''):
 				print('Autodetected currency ',cl)
 				return currencies[cl], deamons[currencies[cl]["deamon-name"]]
 	
-	selected_currency=helpers.optional_input(propmtstr='Select currency name or quit app:', options_list=cur_list, soft_quite=False)
+	selected_currency=iop.optional_input(propmtstr='Select currency name or quit app:', options_list=cur_list, soft_quite=False)
 
 	return currencies[selected_currency], deamons[currencies[selected_currency]["deamon-name"]]
 
@@ -376,7 +376,7 @@ def available_deamons():
 			continue
 			
 		try:
-			fcont=helpers.readfile(curf).replace('\\','\\\\')
+			fcont=iop.readfile(curf).replace('\\','\\\\')
 			# print(fcont)
 			tmp_dict=json.loads(fcont)
 			
@@ -419,7 +419,7 @@ def available_currencies(av_deamons):
 			continue
 			
 		try:
-			fcont=helpers.readfile(curf).replace('\\','\\\\')
+			fcont=iop.readfile(curf).replace('\\','\\\\')
 			# print(fcont)
 			tmp_dict=json.loads(fcont)
 			tmp_name=ff.replace('.json','').lower()
