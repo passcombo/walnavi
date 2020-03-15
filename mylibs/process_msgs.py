@@ -9,7 +9,7 @@ from pandas import DataFrame
 import pandas
 import subprocess
 import json
-import mylibs.helpers as helpers
+# import mylibs.helpers as helpers
 import mylibs.mailbox as mailbox
 import mylibs.wallet_commands as wallet_commands
 import mylibs.load_settings as load_settings
@@ -111,7 +111,7 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 	
 	is_special_cmd=False
 	
-	user_cmd=helpers.clear_whites(user_cmd)
+	user_cmd=iop.clear_whites(user_cmd)
 	ucmdlow=user_cmd.lower()
 	# ucmdlow=user_cmd.replace("= ","=").replace(" =","=")
 	
@@ -195,7 +195,7 @@ def readcurrentdecry():
 	msg_d=''
 	with open(tmpf, 'r') as f: # overwrite last id
 		
-		msg_d=helpers.clear_whites(f.read())
+		msg_d=iop.clear_whites(f.read())
 		f.close()
 		
 	os.remove(tmpf)
@@ -258,7 +258,7 @@ def encrypt_msg(msg_content,mid,rsa_pass='',aes_pass=''):
 		f.close()	
 
 	# h_head,t_tail=os.path.split(somefile)
-	tmp_path2=os.path.join('archive','outbox','proc','at_'+str(mid)+'_'+helpers.now_time_str()+'.txt')
+	tmp_path2=os.path.join('archive','outbox','proc','at_'+str(mid)+'_'+iop.now_time_str()+'.txt')
 	# ofile=os.path.join(h_head,'current_encr.txt')
 	
 	if rsa_pass=='':
