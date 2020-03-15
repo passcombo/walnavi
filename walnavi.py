@@ -1,11 +1,3 @@
-# TODO:
-# [ok] create dir struct on start
-# mailing check the function taking email reply addr - ?
-# [ok] move limits logs and txids to cur folder
-# test pirate and verus
-# [ok] test multiline message processing - process line by line until command ?
-
-
 
 
 
@@ -27,7 +19,7 @@ import pandas
 import subprocess
 import json
 # import mylibs.wallet_commands as wallet_commands
-import mylibs.helpers as helpers
+# import mylibs.helpers as helpers
 import mylibs.mailbox as mailbox
 import mylibs.process_msgs as msgproc
 import mylibs.load_settings as load_settings
@@ -58,11 +50,11 @@ if __name__=='__main__':
 		os.mkdir('tmp')
 
 	iop.check_already_running()
-	auto_cur=helpers.coin_autodetect()
+	auto_cur=iop.coin_autodetect()
 
 
 
-	selected_mode=helpers.ask_mode() 
+	selected_mode=iop.ask_mode() 
 	
 	pswd=''
 
@@ -112,7 +104,7 @@ if __name__=='__main__':
 
 	# print(FULL_DEAMON_PARAMS)
 	# print(CLI_STR)
-	# print(selcur)
+	# print(selcur) # selcur['ac_name']=='VERUS'
 	# exit()
 		
 	json_conf["cur_path_addr_book"]=selcur["path"].replace('.json','.addr').replace('currencies','addrbooks')
@@ -131,7 +123,7 @@ if __name__=='__main__':
 	#####################################################################
 	####################### VERIFY wallet is synced
 
-	tmpcond,tmppid=helpers.check_deamon_running(''.join(FULL_DEAMON_PARAMS)) #seldeam['deamon-conf']['deamon-path'])
+	tmpcond,tmppid=iop.check_deamon_running(''.join(FULL_DEAMON_PARAMS)) #seldeam['deamon-conf']['deamon-path'])
 
 	deamon_started=False
 
@@ -168,7 +160,7 @@ if __name__=='__main__':
 				if deamon_started:
 					print("\n komodod deamon not responding? ..o.o... [komodod] already running ?.. if this error persists - check system processes and kill [komodod] ")
 					
-					tmpcond,tmppid=helpers.check_deamon_running(''.join(FULL_DEAMON_PARAMS)) #seldeam['deamon-conf']['deamon-path'])
+					tmpcond,tmppid=iop.check_deamon_running(''.join(FULL_DEAMON_PARAMS)) #seldeam['deamon-conf']['deamon-path'])
 					
 					if tmpcond:
 						print('Found',tmppid)
@@ -241,6 +233,14 @@ if __name__=='__main__':
 		COMMANDS.append("editappsettings")
 		print('\n Wallet mode allows to edit address book and app settings.')
 		
+	if selcur['currency-conf']['ac_name']=='VERUS':
+		COMMANDS.append("stake")
+		COMMANDS.append("stakestop")
+		
+		if selected_mode!='wallet':
+			opstat=subprocess.getoutput(CLI_STR+" setgenerate true 0")
+			print("STAKING ON")
+		
 			
 	COMMANDS.sort()
 
@@ -279,12 +279,14 @@ if __name__=='__main__':
 			return 'CONFIRM'+' sending \namount '+str(am)+'\nfrom address '+origa+'\nto address '+desta
 		
 
-	citer=4
+	# citer=4
 	# better set working time 
 
-
-
-	while deamon_warning not in zxc and citer>0: 
+	# dict_income, print_str = wallet_commands.check_for_new_tx(CLI_STR,wallet_commands.cur_name(json_conf))
+	# print(print_str)
+	# exit()
+					
+	while deamon_warning not in zxc: # and citer>0: 
 
 
 		if selected_mode=='wallet':	
@@ -294,7 +296,7 @@ if __name__=='__main__':
 			# print()
 			time.sleep(0.5)
 			user_cmd=iop.input_prompt("\nEnter your command:", confirm=False, soft_quite=True)    #input()
-			user_cmd=helpers.clear_whites(user_cmd)
+			user_cmd=iop.clear_whites(user_cmd)
 			
 			
 			if user_cmd.lower() in ['confirm','confirmed'] and toconfstr!='':
@@ -318,7 +320,7 @@ if __name__=='__main__':
 		
 		elif selected_mode=='deamon':
 		
-			citer-=1
+			# citer-=1
 			deamon_subject='Cogito ergo sum'
 				
 			sender_email=json_conf["email_addr"]
@@ -330,10 +332,16 @@ if __name__=='__main__':
 			if json_conf["incoming_mail_sender_email"].strip()!='':
 				sender_to=json_conf["incoming_mail_sender_email"].strip()
 			
+				
+			
 			FROM_EMAIL=json_conf["email_addr"]
 			FROM_PWD=json_conf["email_password"]
 			SMTP_SERVER=json_conf["smtp_addr"]
 			IMAP_SERVER=json_conf["imap_addr"]
+			DEFAULT_RECEIVER=json_conf["incoming_mail_sender_email"].strip()
+			if DEFAULT_RECEIVER=='':
+				DEFAULT_RECEIVER=FROM_EMAIL
+			
 			title_contains=json_conf["incoming_mail_title"]
 			
 			def_opt={'last_msg_limit':555,'from':'any', 'subject':'any', 'only_new':'yes'}
@@ -357,14 +365,13 @@ if __name__=='__main__':
 					if print_str!='':
 						# print('found',print_str)
 						# deamon_refresh_basic=1
-						print_str='New session started - will check for new commands every 30 seconds since now\n'+print_str
+						# print_str='New session started - will check for new commands every 30 seconds since now\n'+print_str
 						
-						potlist=mailbox.send_input(json_conf ,pswd, False, False, msg_receiver_s=[sender_email],subj=deamon_subject, sent_msg_cont=print_str)	
+						potlist=mailbox.send_input(json_conf ,pswd, False, False, msg_receiver_s=[DEFAULT_RECEIVER],subj=deamon_subject, sent_msg_cont=print_str)	
 					# else:
 						# print('nothing')
 			
 			else:
-				t_last_cmd=datetime.datetime.now()
 				iilist.sort() # process from olest to newest
 				cmd=''
 				lastii=-1
@@ -430,6 +437,8 @@ if __name__=='__main__':
 						
 				if cmd!='':
 				
+					t_last_cmd=datetime.datetime.now()
+					# print('442 cmd',cmd)
 					if cmd!='':
 						cmd_res=msgproc.cmd_process(cmd,COMMANDS,CMD_HELP,FEE,json_conf,CLI_STR,pswd)
 					
@@ -471,24 +480,28 @@ if __name__=='__main__':
 						retv=mailbox.send_email(SMTP_SERVER,FROM_EMAIL, FROM_PWD, FROM_EMAIL, msg_receiver, [file_att] , subj, text_part)
 						print(retv)
 			
-			if t_last_cmd-datetime.datetime.now()<datetime.timedelta(0, 600, 0):
+			if datetime.datetime.now() - t_last_cmd <datetime.timedelta(0, 600, 0):
+				# print('485 cmd',datetime.timedelta(0, 600, 0), t_last_cmd,datetime.datetime.now())
 				deamon_refresh_basic=30
-			else:
+				
+			elif deamon_refresh_basic==30:
 				deamon_refresh_basic=120
 				
 				cmd_res='Session ended - now checking for new commands every 2 minutes.'
 				# if msg email not configured - will send to self 
-				potlist=mailbox.send_input(json_conf ,pswd, False, False, msg_receiver_s=[sender_email],subj=deamon_subject, sent_msg_cont=cmd_res)
-				retv=mailbox.send_email(SMTP_SERVER,FROM_EMAIL, FROM_PWD, FROM_EMAIL, msg_receiver, [file_att] , subj, text_part)
+				potlist=mailbox.send_input(json_conf ,pswd, False, False, msg_receiver_s=[DEFAULT_RECEIVER],subj=deamon_subject, sent_msg_cont=cmd_res)
+				# print(potlist)
+				retv=mailbox.send_email(SMTP_SERVER,FROM_EMAIL, FROM_PWD, FROM_EMAIL, potlist[0][2] , [potlist[0][0]] , potlist[0][1], potlist[0][3])
 				print(retv)
 			
 			toquit=''
 			toquit=iop.input_in_time("Enter 'q' to quit deamon or 'stop' to quit and stop komodod:", deamon_refresh_basic-1)
-			tsd=time.time()
-			while time.time() - tsd < deamon_refresh_basic:
-				time.sleep(1)
-				if toquit!='':
-					break
+			# tsd=time.time()
+			# print('Break for '+str(deamon_refresh_basic)+' seconds...')
+			# while time.time() - tsd < deamon_refresh_basic:
+				# time.sleep(1)
+				# if toquit!='':
+					# break
 			
 			
 			if toquit.lower()=='stop':
@@ -505,3 +518,11 @@ if __name__=='__main__':
 		if selected_mode=='deamon':
 			print('Next iteration')	
 		zxc=str(subprocess.getoutput(CLI_STR+" getinfo"))
+
+
+		
+		
+		
+
+
+	
