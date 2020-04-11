@@ -9,6 +9,7 @@ To start configure config/deamons and config/currencies accordingly:
 1. if yo uwant to use only Verus or Pirate - edit "config\deamons" to set specific path
 2. if other currency - additionally you need to make relevant json file in "config\currencies"
 3. Deamon mode requires to set up some credentials to send notifications and get commands via email. Credentials are stored in AES encrypted file, that's why at start it requires a good password you remember. I recommend to follow gpgon mailbox setup instructions pdf.
+4. run cmd: "python walnavi.py" or "python3 walnavi.py"
 
 Basic python libs required (see gpgon app Android instructions)
 
