@@ -129,15 +129,26 @@ def log_txid(strtxid,currency_name ): # saving tx done
 def unconf_tx_all(CLI_STR,max_conf='100'):
 	
 	dict_unconf_tx_all={}
-	cmdloc=['z_listunspent 0 '+max_conf+' true','listunspent 0 '+max_conf]
+	cmdloc=['z_listunspent 0 '+max_conf+' true', 'listunspent 0 '+max_conf, 'listtransactions "*" 999999']
 	
 	for ccc in cmdloc:
 	
 		tmp1=subprocess.getoutput(CLI_STR+" "+ccc )
+		# if ccc=='listtransactions "*" 0 999999':
+			# print(tmp1)
+		
 		try:
 			js1=json.loads(tmp1)
 			# print('139',js1)
 			for jj in js1:
+			
+				if "address" not in jj or "amount" not in jj or "txid" not in jj or "confirmations" not in jj:
+					continue
+					
+				if ccc!='listtransactions "*" 999999':
+					if int(jj["confirmations"])>int(max_conf):
+						continue
+			
 				tmpadr=jj["address"]
 				tmpam=jj["amount"]
 				tmptxid=jj["txid"]
@@ -146,6 +157,17 @@ def unconf_tx_all(CLI_STR,max_conf='100'):
 				# print('146',jj)
 				if 'generated' in jj:
 					tmpgen=str(jj["generated"])
+					
+				if 'category' in jj: # category only for mintes = listtransaction
+					# print(str(jj))
+					if str(jj["category"]) in ['mint','immature']: # take only mint
+						if int(jj["confirmations"])>100: # but remove if conf > 100
+							continue
+						else:
+							tmpgen='True'
+					else:
+						continue
+							
 				
 				if tmpadr not in dict_unconf_tx_all:
 					dict_unconf_tx_all[tmpadr]=[]
