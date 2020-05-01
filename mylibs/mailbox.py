@@ -485,7 +485,7 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 		mail.select('inbox')
 	except:
 		err_track = traceback.format_exc()
-		return {"Error":err_track}
+		return {"Error":err_track},[]
 
 
 	def_opt={'date_before':'any','date_since':'any', 'from':'any', 'subject':'any', 'last_msg_limit':5, 'only_new':'yes'}
@@ -593,7 +593,7 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 	if ttype !='OK':
 		mail.close()
 		mail.logout()
-		return {} #'no msg found'
+		return {},[] #'no msg found'
 			
 	mail_ids = data[0]
 	id_list = mail_ids.split()   
