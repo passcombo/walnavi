@@ -697,7 +697,7 @@ def is_imap_conn_bad( mail_from, mail_from_pswd, imap_addr):
 			mail.select('inbox')
 			mail.close()
 			mail.logout()
-		# return False # OK
+		return False # OK
 	except:
 		return True	
 		
