@@ -137,7 +137,7 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 	elif cmd_name in COMMANDS or is_special_cmd: #"send" in ucmd
 	
 		# print(114)
-		if cmd_name=="exit": # only make sense fo wallet not deamon
+		if cmd_name=="exit" or cmd_name=="q": # only make sense fo wallet not deamon
 			print("...Exiting...")
 			print("Cryptocurrency deamon still running until you use command 'stop'")
 			exit()
@@ -152,18 +152,22 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 			# try:
 			if True:
 			
+				tmp_deamon_defaults=DEAMON_DEFAULTS.copy()
+			
 				if cmd_name in ['send','status'] and len(wallet_mode_limits)>0:
 					# wallet mode chenge limits:
-					DEAMON_DEFAULTS["tx_amount_limit"]=wallet_mode_limits["tx_amount_limit"]
-					DEAMON_DEFAULTS["tx_time_limit_hours"]=wallet_mode_limits["tx_time_limit_hours"] 
+					# DEAMON_DEFAULTS["tx_amount_limit"]=wallet_mode_limits["tx_amount_limit"]
+					# DEAMON_DEFAULTS["tx_time_limit_hours"]=wallet_mode_limits["tx_time_limit_hours"] 
+					tmp_deamon_defaults["tx_amount_limit"]=wallet_mode_limits["tx_amount_limit"]
+					tmp_deamon_defaults["tx_time_limit_hours"]=wallet_mode_limits["tx_time_limit_hours"] 
 				
-				cmd_res=wallet_commands.process_cmd(load_settings.get_addr_book(DEAMON_DEFAULTS["cur_path_addr_book"],pswd), FEE,DEAMON_DEFAULTS,CLI_STR,user_cmd)
+				cmd_res=wallet_commands.process_cmd(load_settings.get_addr_book(tmp_deamon_defaults["cur_path_addr_book"],pswd), FEE,tmp_deamon_defaults,CLI_STR,user_cmd)
 				
 				if 'CONFIRM OPERATION:: ' in cmd_res:
 					return cmd_res
 				else:
 					if cmd_name.lower()=='status':
-						cmd_res+=load_settings.external_addr_book(wallet_commands.get_wallet(CLI_STR,True),DEAMON_DEFAULTS["cur_path_addr_book"],pswd,CLI_STR,True)
+						cmd_res+=load_settings.external_addr_book(wallet_commands.get_wallet(CLI_STR,True),tmp_deamon_defaults["cur_path_addr_book"],pswd,CLI_STR,True)
 				
 					return "\nCOMMAND RESULT:\n"+cmd_res
 			
