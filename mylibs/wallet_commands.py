@@ -141,7 +141,7 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 			stake_sum_write(toappend,sumpath,'a+')	
 		else:
 			toappend.append([datetime.datetime.now(), 0, ''])
-			stake_sum_write(toappend,sumpath) #write
+			stake_sum_write(toappend,sumpath,'a+') #write
 
 		# except:
 			# pass
