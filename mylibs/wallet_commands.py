@@ -12,9 +12,221 @@ import pandas
 import subprocess
 import json
 import mylibs.ioprocessing as iop
+import mylibs.format_html_table as aggr_mail
+import pytz
 # import mylibs.helpers as helpers
 
 import re
+
+
+### if coins = VRSC and mode=deamon - allow option for sending staked reports
+def check_txid_in_df(zzz,df):
+	toappend=[]
+	overlaped=0
+	# tmpii=0
+	
+	for z in zzz:
+	
+		if z['category']!='mint':
+			continue
+		# date_time=pandas.to_datetime(z['time']/ 1e3) # int
+		date_time=datetime.datetime.fromtimestamp(z['time'])
+		
+		amount=z['amount'] # float
+		txid=z['txid'] # str
+		ind= df['date_time'] >= date_time
+		
+		
+		if len(df[ind])==0:
+			# print('no overlap')
+			df2=df[ind]
+			ind2=df2['txid']==txid
+			if len(df2[ind2])==0:
+				# print('new txid',txid)
+				toappend.append([date_time, amount, txid])
+				# tmpii+=1
+		else:
+			overlaped+=1
+	
+	return toappend, overlaped
+	
+	
+	
+def stake_sum_write(toappend,file_path,mode='w+'): #  'a+' for append
+
+	# x=datetime.datetime.today()
+	time_format='%Y-%m-%d %H:%M:%S'
+
+	# x1=x.strftime(time_format)
+	# print('writing',str(amnt),str(addr_from),str(addr_to))
+	
+	with open(file_path, mode) as f:
+	
+		if mode=='w+':
+			# names=['date_time','amount','txid']
+			f.write('date_time'+';'+'amount'+';'+'txid'+';\n')
+	
+		for aa in toappend:
+			f.write(aa[0].strftime(time_format)+';'+str(aa[1])+';'+str(aa[2])+';\n')
+		f.close()	
+	
+def add_periods(df):
+	
+	df['hour']=df['date_time'].copy()
+	df['day']=df['date_time'].copy()
+	df['month']=df['date_time'].copy()
+	df['weeknr']=df['date_time'].copy()
+	for ii, dd in enumerate(df['date_time']):
+		df['hour'].iloc[ii]=datetime.datetime( dd.year, dd.month, dd.day, dd.hour )
+		df['day'].iloc[ii]=datetime.datetime( dd.year, dd.month, dd.day  ) 
+		df['month'].iloc[ii]=datetime.datetime( dd.year, dd.month, 1  ) 
+		df['weeknr'].iloc[ii]=dd.isocalendar()[0]*100+dd.isocalendar()[1]
+		
+	
+	total=df[['amount']].copy().aggregate(['sum'])
+	
+	hourly=df[['hour','amount']].groupby('hour',as_index=False).aggregate({'amount':['sum']})
+	hourly=hourly.sort_values(by='hour', ascending=False)
+	hourly.columns = hourly.columns.droplevel(1)
+	# print(hourly.iloc[:24,:])
+	
+	daily=df[['day','amount']].groupby('day',as_index=False).aggregate({'amount':['sum']})
+	daily=daily.sort_values(by='day', ascending=False)
+	daily.columns = daily.columns.droplevel(1)
+	# print(daily.iloc[:7,:])
+	
+	monthly=df[['month','amount']].groupby('month',as_index=False).aggregate({'amount':['sum']})
+	monthly=monthly.sort_values(by='month', ascending=False)
+	monthly.columns = monthly.columns.droplevel(1)
+	# print(monthly.iloc[:6,:])
+	
+	weekly=df[['weeknr','amount']].groupby('weeknr',as_index=False).aggregate({'amount':['sum']}).sort_values(by='weeknr', ascending=False)
+	weekly.columns = weekly.columns.droplevel(1)
+	# print(weekly.iloc[:5,:])
+	# exit()
+	return total.iloc[0,0], monthly.iloc[:6,:], weekly.iloc[:5,:], daily.iloc[:7,:], hourly.iloc[:24,:]
+	
+	
+
+def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # run 1 an hour, exclude current hour 
+	# 1. check file exist:
+	sumpath=os.path.join('config','logs','vrsc_stake_sum.csv')
+	
+
+		 
+	toappend=[]
+	
+	if os.path.exists(sumpath):
+	
+		tmptimestamp=os.path.getmtime(sumpath) # BUG? cannot set exact time - trick
+		cur_time=time.localtime()
+	
+		if time.time()-tmptimestamp<3500 or cur_time.tm_min >15:
+			return
+	
+		#read file
+		df=pandas.read_csv(sumpath,";",names=['date_time','amount','txid'],header=0, index_col=False  ,parse_dates=['date_time'],infer_datetime_format=True,date_parser=lambda x: pandas.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') )#,names=['date_time','amount','txid']
+
+		# try:
+		zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 999') )
+		toappend,overlaped=check_txid_in_df(zzz,df)
+		# print(toappend)
+		
+		if overlaped==0:# if no overlap maybe period was too short...
+			# print('overlap',overlaped)
+			zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 9999') )
+			toappend,overlaped=check_txid_in_df(zzz,df)
+		
+		if len(toappend)>0:
+			stake_sum_write(toappend,sumpath,'a+')	
+			
+		# except:
+			# pass
+	else: 
+		# try:
+		# print('create new file')
+		zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 9999') )
+		df = DataFrame(columns=['date_time','amount','txid'])
+		toappend,overlaped=check_txid_in_df(zzz,df)
+		# print('overlap',overlaped)
+		
+		stake_sum_write(toappend,sumpath )	 
+		# except:
+			# pass
+
+	# now read again
+	df=pandas.read_csv(sumpath,";",names=['date_time','amount','txid'],header=0, index_col=False  ,parse_dates=['date_time'],infer_datetime_format=True,date_parser=lambda x: pandas.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') )#,names=['date_time','amount','txid']
+	# print(df)
+	# exit()
+
+	# adjust to show zeros:
+	t1=datetime.datetime.now() # pytz.utc)
+	
+	add_dates=[]
+
+	for tt in range(1,25):
+		add_dates.append(datetime.datetime(t1.year,t1.month,t1.day,t1.hour) - datetime.timedelta(hours=tt) )
+		
+	for tt in range(1,190):
+		add_dates.append(datetime.datetime(t1.year,t1.month,t1.day) - datetime.timedelta(days=tt) )
+
+		
+		
+		
+	for aa in add_dates:
+		df=df.append(DataFrame([[aa,0,'']], columns=['date_time','amount','txid']))
+	
+	# aggregate by hours, days, weeks, months -> add new column calculated in df
+	# write aggr result to list
+	total, monthly, weekly, daily, hourly=add_periods(df)
+	
+	monthly_list=[]
+	monthly_list.append(monthly.columns.tolist())
+	monthly_list+=monthly.values.tolist()
+	
+	
+	weekly_list=[]
+	weekly_list.append(weekly.columns.tolist())
+	weekly_list+=weekly.values.tolist()
+	
+	
+	daily_list=[]
+	daily_list.append(daily.columns.tolist())
+	daily_list+=daily.values.tolist()
+	
+	
+	hourly_list=[]
+	hourly_list.append(hourly.columns.tolist())
+	hourly_list+=hourly.values.tolist()
+	
+	total_list=[['Total'],[total]]
+	
+	list_of_dict_of_lol=[{'title':'Hourly', 'lol':hourly_list },{'title':'Daily', 'lol':daily_list },{'title':'Weekly', 'lol':weekly_list },{'title':'Monthly', 'lol':monthly_list },{'title':'Total', 'lol':total_list } ]
+	
+	html_ready=aggr_mail.list_to_html_table(list_of_dict_of_lol) # [{title:, lol:, }]
+	# print(html_ready)
+	# exit()
+	aggr_mail.send_html_email(sender_email,password,sender_name,receiver_email, 'Staking notification', html_ready  )
+ 
+	# format time
+	# format numbers to full ints and no '
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # nicer usage
 def get_key_eq_value_x(str_base,str_extract):	# extracting values from "key=value" in sending transaction...
@@ -153,13 +365,15 @@ def unconf_tx_all(CLI_STR,max_conf='100'):
 				tmpam=jj["amount"]
 				tmptxid=jj["txid"]
 				tmpgen='False'
+				tmpconf=jj["confirmations"]
 				
 				# print('146',jj)
 				if 'generated' in jj:
 					tmpgen=str(jj["generated"])
 					
 				if 'category' in jj: # category only for mintes = listtransaction
-					# print(str(jj))
+					#print(str(jj))
+					#try:
 					if str(jj["category"]) in ['mint','immature']: # take only mint
 						if int(jj["confirmations"])>100: # but remove if conf > 100
 							continue
@@ -167,12 +381,16 @@ def unconf_tx_all(CLI_STR,max_conf='100'):
 							tmpgen='True'
 					else:
 						continue
+					#except:
+					#	print(str(jj))
+					#	print(jj["category"])
+					#	exit()
 							
 				
 				if tmpadr not in dict_unconf_tx_all:
 					dict_unconf_tx_all[tmpadr]=[]
 				
-				dict_unconf_tx_all[tmpadr].append({'txid':tmptxid ,'amount':tmpam, 'staked':tmpgen})
+				dict_unconf_tx_all[tmpadr].append({'txid':tmptxid ,'amount':tmpam, 'staked':tmpgen, 'conf':tmpconf})
 				
 		except:
 			pass
@@ -403,12 +621,40 @@ def get_all_addr(CLI_STR): # addr_list, addr_type=get_all_addr(CLI_STR) -> alias
 	addr_list=[]
 	addr_types={}
 	
-	r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
+	r1=subprocess.getoutput(CLI_STR+" "+'listaddressgroupings')
+	# r1=subprocess.getoutput(CLI_STR+" "+'listreceivedbyaddress 0 true true')
+	# print('\n\n\n',r1,'\n\n\n')
+	# r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
 	a1=json.loads(r1)	
+	# print(a1)
+	# exit()
 	
 	for aa in a1:
-		addr_list.append(aa)
-		addr_types[aa]='t'
+		# if 'address' in aa:
+			# addr_list.append(aa['address'])
+			# addr_types[aa['address']]='t'
+		# else:
+		for bb in aa:
+			if bb[0] in addr_list:
+				continue
+				
+			addr_list.append(bb[0])
+			addr_types[bb[0]]='t'
+				# if 'address' in bb:
+					# addr_list.append(bb['address'])
+					# addr_types[bb['address']]='t'
+				# else:
+			# for cc in bb:
+						# if 'address' in cc:
+				# print(cc)
+				# addr_list.append(cc[0])
+				# addr_types[cc[0]]='t'
+						# else:
+							# print('\n\n\n WARNING listaddressgroupings - the hirerachy is even deeper !')
+	
+	# for aa in a1:
+		# addr_list.append(aa['address'])
+		# addr_types[aa['address']]='t'
 		
 	r2=subprocess.getoutput(CLI_STR+" "+"z_listaddresses")
 	a2=json.loads(r2)
@@ -707,14 +953,6 @@ def list_utxo(CLI_STR):
 
 	alias_map, addr_amount_dict = get_wallet(CLI_STR, False, False, True)
 	
-	adrlist=[]
-	amlist=[]
-	
-	for aa in addr_amount_dict:
-		adrlist.append(aa)
-		amlist.append( round(addr_amount_dict[aa]['confirmed']+addr_amount_dict[aa]['unconfirmed'],8) )
-		
-		
 	
 	tmp1=subprocess.getoutput(CLI_STR+" "+'z_listunspent ' )
 	try:
@@ -742,6 +980,7 @@ def list_utxo(CLI_STR):
 	
 	
 	try:
+		# print()
 		js1=json.loads(tmp2)
 		for jj in js1:
 			tmpadr=jj["address"]
@@ -759,25 +998,56 @@ def list_utxo(CLI_STR):
 			addr_amount_dict[tmpadr]["utxo"].append({"confirmations":tmpconf,"amount":tmpam, "txid": tmptxid})
 			addr_amount_dict[tmpadr]["utxo_conf_list"].append(tmpconf)
 			# addr_amount_dict[tmpadr]["utxo_list"].append(tmptxid)
+			
+		udi=unconf_tx_all(CLI_STR,max_conf='0')	# staked amounts
+				
+		for aa, dd in udi.items():
+		
+			for vv in dd: #{'txid':tmptxid ,'amount':tmpam, 'staked':tmpgen, 'conf':tmpconf}
+				
+				addr_amount_dict[aa]["utxo"].append({"confirmations":vv['conf'],"amount":vv["amount"], "txid": vv["txid"]})
+				addr_amount_dict[aa]["utxo_conf_list"].append(vv['conf'])
 	except:
 		pass
 	
 	strprint=''
 	ind=1
 	
+
+	amlist=[]
+	adrlist=[]
+	adr_total=[]
+	
+	for aa in addr_amount_dict:
+		adrlist.append(aa)
+		amlist.append( round(addr_amount_dict[aa]['confirmed']+addr_amount_dict[aa]['unconfirmed'],8) )
+		tmpa=0
+		if "utxo" in addr_amount_dict[aa]:
+			for jj in addr_amount_dict[aa]["utxo"]:
+				tmpa+=jj['amount']
+		adr_total.append(tmpa)
+
+	#print('\n\n\n')
+	#print(amlist)
+	#print(adrlist)
+	#print('\n')
 	for i in sorted(enumerate(amlist), key=lambda x:x[1], reverse=True):
 		ii=i[0]
+		if adr_total[ii]==0: # remove zeros from unspent!
+			continue
+			
 		tmpaddr=adrlist[ii]
 		strprint+=str(ind)+' Total '+str(amlist[ii])+' of addr. '+tmpaddr+'\n'
 		tmpobj=addr_amount_dict[tmpaddr]
-		# print(i,tmpaddr,tmpobj)
+		#print(i,tmpaddr,tmpobj)
 		ind+=1
 		
 		if "utxo_conf_list" in tmpobj:
+			#print('obj',tmpobj)
 		
 			for j in sorted(enumerate(tmpobj["utxo_conf_list"]), key=lambda y:y[1], reverse=True):
 				jj=j[0]
-				# print(tmpobj)
+				#print('jj',jj)
 				strprint+=' - conf. '+str(tmpobj["utxo"][jj]["confirmations"])+' amount '+str(tmpobj["utxo"][jj]["amount"])+' txid '+tmpobj["utxo"][jj]["txid"]+'\n'
 			strprint+=' -- utxo count '+str(len(tmpobj["utxo_conf_list"]))+'\n'
 		else:
@@ -831,7 +1101,7 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 				return '[WRONG ADDR ! ! ! ] '+tmpaddr+' NOT VALID !'
 			
 			
-	elif "listunspent" ==cmdsplit[0]: # ucmd.lower():	
+	elif "unspent" ==cmdsplit[0]: # ucmd.lower():	
 		
 		
 		return list_utxo(CLI_STR)
@@ -966,7 +1236,7 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		
 	
 		tmp_str=ucmd.replace('CONFIRM OPERATION:: '.lower(),'').replace('CONFIRM OPERATION:: ','')
-		# print(tmp_str)
+		print('Confirmed command: '+tmp_str)
 		tmp=subprocess.getoutput(tmp_str)
 		# print(tmp)
 		# if isz: #v1['isvalid']:
@@ -984,9 +1254,14 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		while "result" not in opj:
 			opstat=subprocess.getoutput(CLI_STR+" "+checkopstr)
 			print('...need more time ...')
+			# print(opstat)
 			opstat_orig=opstat
 			opj=json.loads(opstat)[0]
 			opstat=opj["status"]
+			if opstat=="failed":
+				
+				return 'FAILED\n'+opstat_orig
+				
 			time.sleep(3)
 		
 		# print('opstat full\n\n',str(opstat))
@@ -1058,17 +1333,29 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		
 		tmplst=CLI_STR.split(" ")
 		
-		if len(tmplst)>1:
+		if len(tmplst)>1: # 1 version for verus 1 for kmd
 			tmplst=[tmplst[0],tmplst[1],ucmd]
 		else:
 			tmplst=[tmplst[0], ucmd]
-		# tmplst=CLI_STR+" "+ucmd
-		# tmplst=tmplst.split(" ")
-		# print('tmplst',tmplst)
+			
 		subprocess.Popen(  tmplst  )
-		time.sleep(7)
-		# print('done')
-		# print("Remote Control closed! Handling commands and blockchain download turned off.")
+		print("Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... ",flush=True)
+		time.sleep(5)
+		try:
+			deamon_warning="make sure server is running and you are connecting to the correct RPC port"
+	
+			zxc=subprocess.getoutput(CLI_STR+" getinfo")
+			while deamon_warning not in zxc:
+				print('.',end='',flush=True)
+				time.sleep(5)
+				zxc=subprocess.getoutput(CLI_STR+" getinfo")
+				
+			print('Done')
+			# exit()
+		except:
+			print('Done')
+			
+		exit()
 		
 		return "Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... "
 		
