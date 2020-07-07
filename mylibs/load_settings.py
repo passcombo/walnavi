@@ -176,7 +176,7 @@ def print_current_settings(set_name,json_conf,set_name_alia=[]):
 
 def edit_app_settings(json_conf,pswd):
 
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
 	
 	set_name_alia=alias_mapping(set_name)
 	
@@ -190,8 +190,11 @@ def edit_app_settings(json_conf,pswd):
 		toedit=iop.optional_input('Enter alias to edit value or quite [q] or quite and save [S]: ', options_list=list(set_name_alia.values())+['S'], soft_quite=True)
 		if toedit=='S':
 			iop.saving_encr_cred( json.dumps(json_conf) , newest_file, pswd)
-			break
+			print('App settings changed - exiting. Please start the app again.')
+			exit()
 		elif toedit in ['q','']:
+			print('\n! Exit editing without saving, current setup:')
+			print_current_settings(set_name,json_conf,set_name_alia)
 			break
 			
 		nameii = [key  for (key, value) in set_name_alia.items() if value == toedit]
@@ -199,28 +202,35 @@ def edit_app_settings(json_conf,pswd):
 		newvv=''
 		if "encryption_type" in nameii[0]:
 			newvv=iop.optional_input('Enter new value [aes256/pgp]: ', options_list=['aes256','pgp'], soft_quite=True)
+			
+		elif nameii[0] in ["incoming_tx_notification","staking_summary_notification"]:
+			# "incoming_tx_notification","staking_summary_notification"
+			newvv=iop.optional_input('Select status for ['+nameii[0]+'] or quit [q]: ', options_list=['on','off'], soft_quite=True)
 		else:				
 			newvv=iop.input_prompt('Enter new value (enter for empty): ', confirm=True, soft_quite=True)
+			
 		json_conf[nameii[0]]=newvv
 
-	if toedit=='':
-		print('\n! Exit editing without saving, current setup:')
-		print_current_settings(set_name,json_conf,set_name_alia)
-	else:
-		json_conf=json.dumps(json_conf)
-		iop.saving_encr_cred( json_conf, newest_file, pswd)
-		print('App settings changed - exiting. Please start the app again.')
-		exit()
+	# if toedit=='':
+		# print('\n! Exit editing without saving, current setup:')
+		# print_current_settings(set_name,json_conf,set_name_alia)
+	# else:
+		# json_conf=json.dumps(json_conf)
+		# iop.saving_encr_cred( json_conf, newest_file, pswd)
+		# print('App settings changed - exiting. Please start the app again.')
+		# exit()
 		
 		
 
-def read_app_settings(selected_mode):
+def read_app_settings(selected_mode,init_pass=''):
 
 	if not os.path.exists('tmp'):
 		os.mkdir('tmp')
 		
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password"]
-	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
+	
+	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional","off","off"]
+	
 	musthave=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key"]
 	
 	DEAMON_DEFAULTS={}
@@ -244,7 +254,10 @@ def read_app_settings(selected_mode):
 		decr_str=''
 		
 		while try_decr:
-			pp=iop.ask_password(newest_file)
+		
+			pp=init_pass
+			if pp=='':
+				pp=iop.ask_password(newest_file)
 			
 			try:
 				str_rep=iop.decrypt_cred(pp,newest_file) 
@@ -264,6 +277,7 @@ def read_app_settings(selected_mode):
 				err_track = traceback.format_exc()
 				print(err_track)
 				print("Your password didn't match the config file ... Try another password or quit [q]")
+				init_pass=''
 			
 		if try_decr==False:
 			json_conf=json.loads(json.dumps(DEAMON_DEFAULTS))
@@ -347,14 +361,19 @@ def read_app_settings(selected_mode):
 
 # return currency config and deamon config 
 def select_currency(autodetect=''):
+	
 	deamon_list, deamons = available_deamons()
 	cur_list, currencies = available_currencies(deamon_list)
 	
 	if autodetect!='':
+		if autodetect in cur_list: #manual input
+			return currencies[autodetect], deamons[currencies[autodetect]["deamon-name"]]
+	
 		for cl in cur_list: #cc in currencies:
 			if currencies[cl]["currency-conf"]["ac_name"]==autodetect:
 				print('Autodetected currency ',cl)
 				return currencies[cl], deamons[currencies[cl]["deamon-name"]]
+	
 	
 	selected_currency=iop.optional_input(propmtstr='Select currency name or quit app:', options_list=cur_list, soft_quite=False)
 
