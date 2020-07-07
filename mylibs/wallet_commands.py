@@ -52,7 +52,7 @@ def check_txid_in_df(zzz,df):
 	
 	
 	
-def stake_sum_write(toappend,file_path,mode='w+'): #  'a+' for append
+def stake_sum_write(toappend,file_path,mode='w'): #  'a+' for append
 
 	# x=datetime.datetime.today()
 	time_format='%Y-%m-%d %H:%M:%S'
@@ -62,7 +62,7 @@ def stake_sum_write(toappend,file_path,mode='w+'): #  'a+' for append
 	
 	with open(file_path, mode) as f:
 	
-		if mode=='w+':
+		if mode=='w':
 			# names=['date_time','amount','txid']
 			f.write('date_time'+';'+'amount'+';'+'txid'+';\n')
 	
@@ -139,7 +139,9 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 		
 		if len(toappend)>0:
 			stake_sum_write(toappend,sumpath,'a+')	
-			
+		else:
+			stake_sum_write(toappend,sumpath) #write
+
 		# except:
 			# pass
 	else: 
