@@ -35,10 +35,11 @@ def check_deamon_running(deamon_cmd):
 			# Get process name & pid from process object.
 			processName = proc.name()
 			processID = proc.pid
-			
+			#print('compare ',deamon_cmd,''.join(proc.cmdline()))
 			if ''.join(proc.cmdline())==deamon_cmd: #processName in deamon_cmd: # in processName:
 				zxc=proc.as_dict(attrs=['pid', 'memory_percent', 'name', 'cpu_times', 'create_time', 'memory_info', 'cmdline','cwd'])
-				print('\n\n\n NOTE: komodod already running',proc.exe(),'\n\n\n' ) # , ' ::: ', processID,zxc)
+				# print(deamon_cmd)
+				print('\n\n\n NOTE: deamon already running',proc.exe(),'\n\n\n' ) # , ' ::: ', processID,zxc)
 				
 				is_komodod_running=True
 				tmppid=zxc['pid']
@@ -50,9 +51,18 @@ def check_deamon_running(deamon_cmd):
 	return is_komodod_running, tmppid
 
 
-def ask_mode(): # mode = wallet or deamon
+def ask_mode(initv=''): # mode = wallet or deamon
 
 	options=['wallet','deamon','wal','de']
+	
+	if initv!='':
+		if initv[:3]=='wal':
+			return 'wallet'
+		elif initv[:2]=='de':
+			return 'deamon'
+			
+		print('Wrong argument for mode, allowed values: ',str(options))
+
 	# print(colored('hello', 'red'))
 	owc='x'
 	while owc not in options: #!='wallet' and owc != 'n':
@@ -82,18 +92,21 @@ def coin_autodetect():
 	
 	
 	for proc in psutil.process_iter(): # wallet config edit make sense only when komodod not running
+		
 		try:
 		
 			processName = proc.name().replace('.exe','')
-			if processName in deamons_list:
+			if processName in deamons_list and proc.status()!='zombie':
 				lastproc=proc.cmdline()
+				#print(str(proc.pid),str(proc.name()),str(proc.cmdline()),str(proc.status()))
+				#print(processName, deamons_list, lastproc)
 				# print('got process ',proc.cmdline())
 				cc+=1
 					
 		except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
 			x=1
 
-	
+	#print(lastproc,cc)
 		
 	if 'komodod' in ''.join(lastproc) and cc==1: # extract ac name
 		
