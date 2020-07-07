@@ -504,7 +504,7 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 	
 	else: # manual enter values
 	
-		print('\nSet mail search params ... ') #,json_obj[kk])
+		# print('\nSet mail search params ... ') #,json_obj[kk])
 		for kk in def_opt_usr.keys():
 		
 			opt=''
@@ -524,15 +524,13 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 				try:
 					tmpv=int(tmpv)
 				except:
-					print('Wrong mail search value - should be int number: '+tmpv)
+					# print('Wrong mail search value - should be int number: '+tmpv)
 					continue
 			
 			def_opt_usr[kk]=tmpv #propmtstr,confirm=False, soft_quite=False
 	
 	
-	print('Mail search params: ', def_opt_usr)
-	
-	# print('def_opt',def_opt)
+	# print('Mail search params: ', def_opt_usr)
 	
 	
 	
@@ -587,7 +585,7 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 		total_str='ALL'
 		
 	# now seelect top N msg ... 
-	print('Search string: ['+total_str+']')
+	# print('Search string: ['+total_str+']')
 	ttype, data = mail.search(None,  total_str ) #'(SENTSINCE {0})'.format(date), '(FROM {0})'.format(sender_email.strip())
 	
 	if ttype !='OK':
@@ -597,13 +595,10 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 			
 	mail_ids = data[0]
 	id_list = mail_ids.split()   
-	# print(id_list)
 	
 	inter_indxi=[int(x) for x in id_list]
-	# print('inter_indxi',str(inter_indxi))
 	# inter_indxi.sort(reverse = True) 
 	inter_indxi.sort( ) 
-	# print('sorted inter_indxi',str(inter_indxi))
 	
 	msg_to_process={}
 	
@@ -620,7 +615,7 @@ def search_incoming(mail_from , mail_from_pswd , imap_addr, def_opt_init={} ):
 	
 	
 	
-	print('... processing messages ... count ',str(len(inter_indxi)))
+	# print('... processing messages ... count ',str(len(inter_indxi)))
 	
 	iilist=[]
 	
