@@ -283,7 +283,6 @@ if __name__=='__main__':
 			, "send"
 			,"stop"
 			,"exit"
-			,"q"
 			,"getinfo"
 			, "valaddr"
 			,"unspent"
