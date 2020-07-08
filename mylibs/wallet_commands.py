@@ -126,7 +126,7 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 	
 		#read file
 		df=pandas.read_csv(sumpath,";",names=['date_time','amount','txid'],header=0, index_col=False  ,parse_dates=['date_time'],infer_datetime_format=True,date_parser=lambda x: pandas.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') )#,names=['date_time','amount','txid']
-
+		df=df.dropna()
 		# try:
 		zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 999') )
 		toappend,overlaped=check_txid_in_df(zzz,df)
