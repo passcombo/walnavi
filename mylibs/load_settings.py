@@ -10,6 +10,46 @@ import mylibs.ioprocessing as iop
 import mylibs.wallet_commands as wallet_commands
 
 
+def encrypt_wallet(data_dir_path,wal_encr_pass):
+
+	orig_w=os.path.join(data_dir_path,'wallet.dat')
+	if not os.path.exists(orig_w):
+		return 'Wallet path not correct: '+data_dir_path
+	
+	encr_w=os.path.join(data_dir_path,'wallet.encr')
+	
+	if os.path.exists(encr_w):
+		os.remove(encr_w)
+		
+	encr_str="gpg --cipher-algo AES256 --pinentry loopback --passphrase "+wal_encr_pass+" -o "+encr_w+" -c "+orig_w
+	# print(encr_str)
+	
+	str_rep=subprocess.getoutput(encr_str)
+	os.remove(orig_w)
+	
+	return 'Wallet encrypted '+str_rep
+	
+
+def decrypt_wallet(data_dir_path,wal_encr_pass):
+
+	orig_w=os.path.join(data_dir_path,'wallet.dat')
+	if os.path.exists(orig_w):
+		return 'Wallet already derypted! '
+	
+	encr_w=os.path.join(data_dir_path,'wallet.encr')
+	
+	if not os.path.exists(encr_w):
+		return 'Encrypted wallet missing! !!!'
+		
+		
+	decr_str="gpg --pinentry loopback --passphrase "+wal_encr_pass+" -o "+orig_w +" -d "+encr_w
+	str_rep=subprocess.getoutput(decr_str)
+	os.remove(encr_w)
+	
+	return 'Wallet decrypted '+str_rep
+
+
+
 def print_cur_addr_book(cab):
 
 	ret_str='\n\nAddress book: \n[Alias][Full address]'
@@ -176,7 +216,7 @@ def print_current_settings(set_name,json_conf,set_name_alia=[]):
 
 def edit_app_settings(json_conf,pswd):
 
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption"]
 	
 	set_name_alia=alias_mapping(set_name)
 	
@@ -206,8 +246,25 @@ def edit_app_settings(json_conf,pswd):
 		elif nameii[0] in ["incoming_tx_notification","staking_summary_notification"]:
 			# "incoming_tx_notification","staking_summary_notification"
 			newvv=iop.optional_input('Select status for ['+nameii[0]+'] or quit [q]: ', options_list=['on','off'], soft_quite=True)
+		elif nameii[0]=="wallet_encryption":
+			newvv=iop.input_prompt('Enter wallet encryption password (min. length 16, max. 32): ', confirm=True, soft_quite=True)
+			while (len(newvv)<16  or '&' in newvv ) and newvv.lower() not in ['q','']:
+				if len(newvv)<16:
+					print('Password ['+newvv+'] length is '+str(len(newvv))+' < 16, try again or quit...')
+				else:
+					print('Password ['+newvv+'] contains forbidden character [&], try again or quit...')
+					
+				newvv=iop.input_prompt('Enter wallet encryption password (min. length 16, max. 32): ', confirm=True, soft_quite=True)
+			
+			if newvv.lower() in ['q','']:
+				newvv=''
+			
 		else:				
 			newvv=iop.input_prompt('Enter new value (enter for empty): ', confirm=True, soft_quite=True)
+			
+			while nameii[0] in ["outgoing_encryption_key","incoming_encryption_key","gpg_password"] and '&' in newvv:
+				print('Password  or key ['+newvv+'] contains forbidden character [&], try again or quit...')
+				newvv=iop.input_prompt('Enter new value (enter for empty): ', confirm=True, soft_quite=True)
 			
 		json_conf[nameii[0]]=newvv
 
@@ -227,9 +284,12 @@ def read_app_settings(selected_mode,init_pass=''):
 	if not os.path.exists('tmp'):
 		os.mkdir('tmp')
 		
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
 	
-	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional","off","off"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption"]
+	
+	# set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
+	
+	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional","off","off",""]
 	
 	musthave=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key"]
 	
@@ -367,17 +427,17 @@ def select_currency(autodetect=''):
 	
 	if autodetect!='':
 		if autodetect in cur_list: #manual input
-			return currencies[autodetect], deamons[currencies[autodetect]["deamon-name"]]
+			return currencies[autodetect], deamons[currencies[autodetect]["deamon-name"]], autodetect
 	
 		for cl in cur_list: #cc in currencies:
 			if currencies[cl]["currency-conf"]["ac_name"]==autodetect:
 				print('Autodetected currency ',cl)
-				return currencies[cl], deamons[currencies[cl]["deamon-name"]]
+				return currencies[cl], deamons[currencies[cl]["deamon-name"]], cl
 	
 	
 	selected_currency=iop.optional_input(propmtstr='Select currency name or quit app:', options_list=cur_list, soft_quite=False)
 
-	return currencies[selected_currency], deamons[currencies[selected_currency]["deamon-name"]]
+	return currencies[selected_currency], deamons[currencies[selected_currency]["deamon-name"]], selected_currency
 
 
 
