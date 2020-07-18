@@ -27,9 +27,12 @@ def check_txid_in_df(zzz,df):
 	
 	for z in zzz:
 	
-		if z['category']!='mint':
+		if z['category'] not in ['mint','immature'] or 'generated' not in z:
 			continue
-		# date_time=pandas.to_datetime(z['time']/ 1e3) # int
+
+		if z['generated']==False:
+			continue
+			
 		date_time=datetime.datetime.fromtimestamp(z['time'])
 		
 		amount=z['amount'] # float
@@ -38,9 +41,10 @@ def check_txid_in_df(zzz,df):
 		
 		
 		if len(df[ind])==0:
-			# print('no overlap')
+		
 			df2=df[ind]
 			ind2=df2['txid']==txid
+			#print('df2[ind2]',df2[ind2])
 			if len(df2[ind2])==0:
 				# print('new txid',txid)
 				toappend.append([date_time, amount, txid])
@@ -102,8 +106,7 @@ def add_periods(df):
 	
 	weekly=df[['weeknr','amount']].groupby('weeknr',as_index=False).aggregate({'amount':['sum']}).sort_values(by='weeknr', ascending=False)
 	weekly.columns = weekly.columns.droplevel(1)
-	# print(weekly.iloc[:5,:])
-	# exit()
+	
 	return total.iloc[0,0], monthly.iloc[:6,:], weekly.iloc[:5,:], daily.iloc[:7,:], hourly.iloc[:24,:]
 	
 	
@@ -111,7 +114,9 @@ def add_periods(df):
 def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # run 1 an hour, exclude current hour 
 	# 1. check file exist:
 	sumpath=os.path.join('config','logs','vrsc_stake_sum.csv')
-	
+	cur_time=time.localtime()
+	if cur_time.tm_min>15:
+		return
 
 		 
 	toappend=[]
@@ -119,9 +124,8 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 	if os.path.exists(sumpath):
 	
 		tmptimestamp=os.path.getmtime(sumpath) # BUG? cannot set exact time - trick
-		cur_time=time.localtime()
-	
-		if time.time()-tmptimestamp<3500 or cur_time.tm_min >15:
+		
+		if time.time()-tmptimestamp<3500: 
 			return
 	
 		#read file
@@ -129,10 +133,11 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 		df=df.dropna()
 		# try:
 		zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 999') )
+		#print('last5',zzz[-8:-1])
 		toappend,overlaped=check_txid_in_df(zzz,df)
-		# print(toappend)
 		
-		if overlaped==0:# if no overlap maybe period was too short...
+		
+		if overlaped==0: # if no overlap maybe period was too short...
 			# print('overlap',overlaped)
 			zzz=json.loads(subprocess.getoutput(CLI_STR+' listtransactions "" 9999') )
 			toappend,overlaped=check_txid_in_df(zzz,df)
@@ -142,7 +147,7 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 		else:
 			toappend.append([datetime.datetime.now(), 0, ''])
 			stake_sum_write(toappend,sumpath,'a+') #write
-
+			
 		# except:
 			# pass
 	else: 
@@ -159,9 +164,8 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 
 	# now read again
 	df=pandas.read_csv(sumpath,";",names=['date_time','amount','txid'],header=0, index_col=False  ,parse_dates=['date_time'],infer_datetime_format=True,date_parser=lambda x: pandas.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') )#,names=['date_time','amount','txid']
-	# print(df)
-	# exit()
-
+	
+	
 	# adjust to show zeros:
 	t1=datetime.datetime.now() # pytz.utc)
 	
@@ -207,23 +211,11 @@ def get_staked_sum(CLI_STR,sender_email,password,sender_name,receiver_email): # 
 	list_of_dict_of_lol=[{'title':'Hourly', 'lol':hourly_list },{'title':'Daily', 'lol':daily_list },{'title':'Weekly', 'lol':weekly_list },{'title':'Monthly', 'lol':monthly_list },{'title':'Total', 'lol':total_list } ]
 	
 	html_ready=aggr_mail.list_to_html_table(list_of_dict_of_lol) # [{title:, lol:, }]
-	# print(html_ready)
-	# exit()
+	
+	
 	aggr_mail.send_html_email(sender_email,password,sender_name,receiver_email, 'Staking notification', html_ready  )
  
-	# format time
-	# format numbers to full ints and no '
-
-
-
-
-
-
-
-
-
-
-
+ 
 
 
 
@@ -384,11 +376,8 @@ def unconf_tx_all(CLI_STR,max_conf='100'):
 							tmpgen='True'
 					else:
 						continue
-					#except:
-					#	print(str(jj))
-					#	print(jj["category"])
-					#	exit()
-							
+					
+					
 				
 				if tmpadr not in dict_unconf_tx_all:
 					dict_unconf_tx_all[tmpadr]=[]
@@ -629,8 +618,7 @@ def get_all_addr(CLI_STR): # addr_list, addr_type=get_all_addr(CLI_STR) -> alias
 	# print('\n\n\n',r1,'\n\n\n')
 	# r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
 	a1=json.loads(r1)	
-	# print(a1)
-	# exit()
+	
 	
 	for aa in a1:
 		# if 'address' in aa:
@@ -1330,37 +1318,36 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		# print(opstat)
 		return 'Staking OFF'
 
-	elif ucmd.lower()=="stop":
-		# print(currency_name)
-		clear_txid_logs(currency_name)
+	# elif ucmd.lower()=="stop":
+		# clear_txid_logs(currency_name)
 		
-		tmplst=CLI_STR.split(" ")
+		# tmplst=CLI_STR.split(" ")
 		
-		if len(tmplst)>1: # 1 version for verus 1 for kmd
-			tmplst=[tmplst[0],tmplst[1],ucmd]
-		else:
-			tmplst=[tmplst[0], ucmd]
+		# if len(tmplst)>1: # 1 version for verus 1 for kmd
+			# tmplst=[tmplst[0],tmplst[1],ucmd]
+		# else:
+			# tmplst=[tmplst[0], ucmd]
 			
-		subprocess.Popen(  tmplst  )
-		print("Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... ",flush=True)
-		time.sleep(5)
-		try:
-			deamon_warning="make sure server is running and you are connecting to the correct RPC port"
+		# subprocess.Popen(  tmplst  )
+		# print("Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... ",flush=True)
+		# time.sleep(5)
+		# try:
+			# deamon_warning="make sure server is running and you are connecting to the correct RPC port"
 	
-			zxc=subprocess.getoutput(CLI_STR+" getinfo")
-			while deamon_warning not in zxc:
-				print('.',end='',flush=True)
-				time.sleep(5)
-				zxc=subprocess.getoutput(CLI_STR+" getinfo")
+			# zxc=subprocess.getoutput(CLI_STR+" getinfo")
+			# while deamon_warning not in zxc:
+				# print('.',end='',flush=True)
+				# time.sleep(5)
+				# zxc=subprocess.getoutput(CLI_STR+" getinfo")
 				
-			print('Done')
-			# exit()
-		except:
-			print('Done')
+			# print('Done')
 			
-		exit()
+		# except:
+			# print('Done')
+			
+		# exit()
 		
-		return "Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... "
+		# return "Remote Control closed! Handling commands and blockchain download turned off. Stopping deamon ... "
 		
 		
 	else:
