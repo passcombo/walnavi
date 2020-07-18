@@ -109,6 +109,7 @@ def helporcmd(ucmd,COMMANDS,CMD_HELP,html=True):
 
 def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wallet_mode_limits={}):
 	
+#	print('start',user_cmd)
 	is_special_cmd=False
 	
 	user_cmd=iop.clear_whites(user_cmd)
@@ -117,6 +118,7 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 	
 	cmdsplit=ucmdlow.split()
 	cmd_name=cmdsplit[0]
+#	print('cmd_name',cmd_name)
 	
 	# if 'valaddr' in ucmdlow or 'help' in ucmdlow or 'history' in ucmdlow or 'send' in ucmdlow or 'z_getoperationstatus' in ucmdlow or 'merge' in ucmdlow:
 	if 'confirm operation::' in ucmdlow or cmd_name in ['valaddr','help','history','send','z_getoperationstatus','merge']:
@@ -136,7 +138,7 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 		
 	elif cmd_name in COMMANDS or is_special_cmd: #"send" in ucmd
 	
-		# print(114)
+#		print(114,cmd_name)
 		if cmd_name=="exit" or cmd_name=="q": # only make sense fo wallet not deamon
 			print("...Exiting...")
 			print("Cryptocurrency deamon still running until you use command 'stop'")
