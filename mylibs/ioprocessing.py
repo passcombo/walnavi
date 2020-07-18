@@ -828,7 +828,6 @@ def optional_input(propmtstr, options_list, soft_quite=False):
 			print('    Try again...' )
 			
 			
-
 			
 def ask_password(config_file=''): # mode = wallet or deamon
 
@@ -842,13 +841,18 @@ def ask_password(config_file=''): # mode = wallet or deamon
 		
 		if pp=='q':
 			exit()
-		
-		strt='' #testpassbasic(pp)
-		if strt=='':
-			return pp
 			
-		else:
-			print(strt, 'Try again or quit [q]...')
+		if '&' in pp:
+			print('Password or key ['+pp+'] contains forbidden character [&], try again or quit...')
+			continue
+		
+		return pp
+		# strt='' #testpassbasic(pp)
+		# if strt=='':
+			# return pp
+			
+		# else:
+			# print(strt, 'Try again or quit [q]...')
 			
 encr_ext='.targz'
 # also encrypts file if str_cont is a file!
