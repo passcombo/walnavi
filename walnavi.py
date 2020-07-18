@@ -1,31 +1,33 @@
 # args: [wal/de] password curr[vrsc/arrr] [hide/null]
+# todo:
+# -- wallet_all - display all addr including zero balances
+# -- wallet status - display only balances > default fee
+# -- mark addr backed up - non-backed-up addr will get auto tx to main backed up wallet
 
 import os
 import smtplib
 import time
 import imaplib
 import email
+import getpass
 
 import sys, multiprocessing, time
 from termcolor import colored
-# from datetime import datetime
-# from datetime import timedelta
+
 import datetime
 
-# from openpyxl import load_workbook
 from pandas import DataFrame
 import pandas
 import subprocess
 import json
-# import mylibs.wallet_commands as wallet_commands
-# import mylibs.helpers as helpers
+
 import mylibs.mailbox as mailbox
 import mylibs.process_msgs as msgproc
 import mylibs.load_settings as load_settings
 import mylibs.ioprocessing as iop
 import mylibs.wallet_commands as wallet_commands
 os.system('color')
-# import platform
+
 
 
 def conditional_print(txt,condition=True):
@@ -44,6 +46,72 @@ def printsleep(sleep_time,print_char='.'):
 			print(print_char,end='', flush=True)
 
 
+			
+def my_exit(json_conf, selcur, currency_name, CLI_STR):
+
+	wallet_commands.clear_txid_logs(currency_name)
+		
+	tmplst=CLI_STR.split(" ")
+	
+	if len(tmplst)>1: # 1 version for verus 1 for kmd
+		tmplst=[tmplst[0],tmplst[1],'stop']
+	else:
+		tmplst=[tmplst[0], 'stop']
+		
+	subprocess.Popen(  tmplst  )
+	print(" Handling commands and blockchain download turned off. Stopping deamon ... ",flush=True)
+	time.sleep(5)
+	try:
+		deamon_warning="make sure server is running and you are connecting to the correct RPC port"
+
+		zxc=subprocess.getoutput(CLI_STR+" getinfo")
+		while deamon_warning not in zxc:
+			print('.',end='',flush=True)
+			time.sleep(5)
+			zxc=subprocess.getoutput(CLI_STR+" getinfo")
+			
+		print(' Done')
+		
+	except:
+		print(' Done')
+		
+	print(" Handling commands and blockchain download turned off. Stopping deamon ... ")
+
+
+	# encrypt if needed
+	
+	if json_conf["wallet_encryption"]!='':
+		
+		print('Encrypting wallet...')
+	
+		data_dir_path=selcur['currency-conf']["datadir"]
+		
+		if data_dir_path=='' and selcur['currency-conf']["ac_name"].strip()=='VERUS': # only for Verus
+			if sys.platform=='win32':
+				data_dir_path=os.path.join('__DISK__NAME__','Users',getpass.getuser(),'AppData','Roaming','Komodo','VRSC').replace('__DISK__NAME__',"C:")
+			elif sys.platform=='linux':
+				data_dir_path=os.path.join('home',getpass.getuser(),'.komodo','VRSC')	
+
+			print('Data dir path is missing, trying default for Verus: '+data_dir_path)
+		
+		if data_dir_path!='':
+			# print('encrypting wallet '+data_dir_path+" "+json_conf["wallet_encryption"] )
+			print(load_settings.encrypt_wallet( data_dir_path, json_conf["wallet_encryption"] ) )
+		else:
+			print('Wallet decryption is set, but data dir path is empty, ignoring.')
+	# else:
+		# print('encryption not needed')
+	
+	# exit:
+	
+	if not os.path.exists('_DELETE_TO_STOP_'):
+		if not os.path.exists('_DEAMON_STOP_DONE_'):
+			os.mkdir('_DEAMON_STOP_DONE_')
+		
+	exit()
+	
+	
+	
 
 if __name__=='__main__':
 
@@ -85,6 +153,8 @@ if __name__=='__main__':
 	if len(sys.argv)>2:
 		init_pass=sys.argv[2]
 	json_conf, pswd=load_settings.read_app_settings(selected_mode,init_pass) #json_conf["wallet_secret_key"]
+	
+	
 
 	
 	print_cond=True
@@ -107,8 +177,35 @@ if __name__=='__main__':
 	init_cur=auto_cur
 	if len(sys.argv)>3 and init_cur=='':
 		init_cur=sys.argv[3]
-	print(init_cur,len(sys.argv))
-	selcur,seldeam=load_settings.select_currency(init_cur)
+	# print(init_cur,len(sys.argv))
+	selcur,seldeam, cur_name=load_settings.select_currency(init_cur)
+	
+	
+	# check if wallet decryption needed and if data dir is set!
+	
+	if json_conf["wallet_encryption"]!='':
+		print('Decrypting wallet...')
+		data_dir_path=selcur['currency-conf']["datadir"]
+		
+		if data_dir_path=='' and selcur['currency-conf']["ac_name"].strip()=='VERUS': # only for Verus
+			if sys.platform=='win32':
+				data_dir_path=os.path.join('__DISK__NAME__','Users',getpass.getuser(),'AppData','Roaming','Komodo','VRSC').replace('__DISK__NAME__',"C:")
+				
+			elif sys.platform=='linux':
+				data_dir_path=os.path.join('/home',getpass.getuser(),'.komodo','VRSC')	
+				
+			print('Data dir path is missing, trying default for Verus: '+data_dir_path)				
+		
+		if data_dir_path!='':
+			# print('decrypting wallet '+data_dir_path+" "+json_conf["wallet_encryption"] )
+			print(load_settings.decrypt_wallet( data_dir_path, json_conf["wallet_encryption"] ) )
+		else:
+			print('Wallet encryption is set, but data dir path is empty, ignoring.')
+	# else:
+		# print('decryption not needed')
+	
+	
+	
 	
 	ac_params_add_node=''
 	
@@ -141,11 +238,13 @@ if __name__=='__main__':
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust cli for specified path
 		CLI_STR+=' -datadir="'+selcur['currency-conf']["datadir"]+'"'
 
+	# print(171)
+	# my_exit(json_conf, selcur, cur_name, CLI_STR)
 	
 	# later perform only when >59 min since last file update
 	# print(146)
-	# wallet_commands.get_staked_sum( CLI_STR, json_conf["email_addr"], json_conf["email_password"], 'myself', json_conf["email_addr"] )
-	# exit()
+#	wallet_commands.get_staked_sum( CLI_STR, json_conf["email_addr"], json_conf["email_password"], 'myself', json_conf["email_addr"] )
+#	my_exit(json_conf, selcur)
 	
 		
 		
@@ -210,7 +309,7 @@ if __name__=='__main__':
 				if len(asdf)>0:
 					print(asdf[1])
 			# print('****** ZXC \n\n\n ******** \n',zxc)
-			# exit()
+			# my_exit(json_conf, selcur)
 			if 'is not recognized' in zxc or 'exe' in zxc:
 				print('Command ['+CLI_STR+" getinfo"+'] not recognized - wrong path ?')
 			
@@ -338,14 +437,7 @@ if __name__=='__main__':
 		else:
 			return 'CONFIRM'+' sending \namount '+str(am)+'\nfrom address '+origa+'\nto address '+desta
 		
-
-	# citer=4
-	# better set working time 
-
-	# dict_income, print_str = wallet_commands.check_for_new_tx(CLI_STR,wallet_commands.cur_name(json_conf))
-	# print(print_str)
-	# exit()
-	
+		
 	if os.path.exists('_DELETE_TO_STOP_'):
 		print('Background mode ... ')
 					
@@ -371,10 +463,13 @@ if __name__=='__main__':
 				toconfstr=''
 				user_cmd=''
 			
-			# if user_cmd.lower()=="stop":
 			
-			# el
+			
 			if user_cmd!='':
+			
+				if user_cmd.lower()=='stop':
+					my_exit(json_conf, selcur, cur_name, CLI_STR)
+					
 				cmd_res=msgproc.cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,json_conf,CLI_STR,pswd,wallet_mode_limits)
 				
 				if 'CONFIRM OPERATION:: ' in cmd_res:
@@ -506,6 +601,10 @@ if __name__=='__main__':
 					t_last_cmd=datetime.datetime.now()
 					
 					if cmd!='':
+					
+						if cmd.lower()=='stop':
+							my_exit(json_conf, selcur, cur_name, CLI_STR)
+							
 						cmd_res=msgproc.cmd_process(cmd,COMMANDS,CMD_HELP,FEE,json_conf,CLI_STR,pswd)
 					
 						if 'CONFIRM OPERATION:: ' in cmd_res:
@@ -568,14 +667,14 @@ if __name__=='__main__':
 											
 						conditional_print('\nDEAMON STOP\n'+str(zzz),print_cond)
 						# time.sleep(11)
-						printsleep(30)
-						exit()
+						# printsleep(60)
+						my_exit(json_conf, selcur, cur_name, CLI_STR)
 			
 			elif not os.path.exists('_DELETE_TO_STOP_'):
-				zzz=subprocess.getoutput(CLI_STR+" stop")
-				time.sleep(30)
-				os.mkdir('_DEAMON_STOP_DONE_')
-				exit()
+				# zzz=subprocess.getoutput(CLI_STR+" stop")
+				# time.sleep(60)
+				# os.mkdir('_DEAMON_STOP_DONE_')
+				my_exit(json_conf, selcur, cur_name, CLI_STR)
 				
 		if selected_mode=='deamon':
 			conditional_print('Next iteration',print_cond)	
