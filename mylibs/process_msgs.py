@@ -212,8 +212,8 @@ def readcurrentdecry():
 def process_main(msg_dict,fullgpgpass,simplepass=''):
 	
 	
-	full_gpg_cmd="gpg --pinentry loopback --passphrase "+fullgpgpass #+" -o "++" -d "+
-	simple_gpg="gpg --pinentry loopback --passphrase "+simplepass
+	full_gpg_cmd='gpg --pinentry loopback --passphrase "'+fullgpgpass #+" -o "++" -d "+
+	simple_gpg='gpg --pinentry loopback --passphrase "'+simplepass
 	
 	commands={}
 	
@@ -229,7 +229,7 @@ def process_main(msg_dict,fullgpgpass,simplepass=''):
 			
 			# first try RSA
 			
-			str_rep=subprocess.getoutput(full_gpg_cmd+" -o "+tmpf.replace('current.txt','currentd.txt')+" -d "+tmpf)
+			str_rep=subprocess.getoutput(full_gpg_cmd+'" -o '+tmpf.replace('current.txt','currentd.txt')+" -d "+tmpf)
 			
 			if 'RSA' in str_rep:
 				print('Assume correct RSA')
@@ -239,7 +239,7 @@ def process_main(msg_dict,fullgpgpass,simplepass=''):
 				
 			elif 'AES' in str_rep:
 				print('Assume error - try AES')
-				str_rep=subprocess.getoutput(simple_gpg+" -o "+tmpf.replace('current.txt','currentd.txt')+" -d "+tmpf)
+				str_rep=subprocess.getoutput(simple_gpg+'" -o '+tmpf.replace('current.txt','currentd.txt')+" -d "+tmpf)
 				# print(k,'AES',readcurrentdecry())
 				# commands.append({k:readcurrentdecry()})
 				commands[k]=readcurrentdecry()
@@ -268,9 +268,9 @@ def encrypt_msg(msg_content,mid,rsa_pass='',aes_pass=''):
 	# ofile=os.path.join(h_head,'current_encr.txt')
 	
 	if rsa_pass=='':
-		str_gpg="gpg --cipher-algo AES256 --pinentry loopback --passphrase "+aes_pass+" -o "+tmp_path2+" -a -c "+tmp_path1
+		str_gpg='gpg --cipher-algo AES256 --pinentry loopback --passphrase "'+aes_pass+'" -o '+tmp_path2+" -a -c "+tmp_path1
 	else:
-		str_gpg="gpg --pinentry loopback --passphrase "+rsa_pass+" -o "+tmp_path2+" -a -d "+tmp_path1
+		str_gpg='gpg --pinentry loopback --passphrase "'+rsa_pass+'" -o '+tmp_path2+" -a -d "+tmp_path1
 		
 	# print('Encrypting '+str_gpg)
 	gpgo=subprocess.getoutput(str_gpg)
