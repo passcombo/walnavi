@@ -21,7 +21,7 @@ def encrypt_wallet(data_dir_path,wal_encr_pass):
 	if os.path.exists(encr_w):
 		os.remove(encr_w)
 		
-	encr_str="gpg --cipher-algo AES256 --pinentry loopback --passphrase "+wal_encr_pass+" -o "+encr_w+" -c "+orig_w
+	encr_str='gpg --cipher-algo AES256 --pinentry loopback --passphrase "'+wal_encr_pass+'" -o '+encr_w+" -c "+orig_w
 	# print(encr_str)
 	
 	str_rep=subprocess.getoutput(encr_str)
@@ -42,7 +42,7 @@ def decrypt_wallet(data_dir_path,wal_encr_pass):
 		return 'Encrypted wallet missing! !!!'
 		
 		
-	decr_str="gpg --pinentry loopback --passphrase "+wal_encr_pass+" -o "+orig_w +" -d "+encr_w
+	decr_str='gpg --pinentry loopback --passphrase "'+wal_encr_pass+'" -o '+orig_w +" -d "+encr_w
 	str_rep=subprocess.getoutput(decr_str)
 	os.remove(encr_w)
 	
@@ -216,7 +216,7 @@ def print_current_settings(set_name,json_conf,set_name_alia=[]):
 
 def edit_app_settings(json_conf,pswd):
 
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption","active_consolidation_address"]
 	
 	set_name_alia=alias_mapping(set_name)
 	
@@ -248,11 +248,11 @@ def edit_app_settings(json_conf,pswd):
 			newvv=iop.optional_input('Select status for ['+nameii[0]+'] or quit [q]: ', options_list=['on','off'], soft_quite=True)
 		elif nameii[0]=="wallet_encryption":
 			newvv=iop.input_prompt('Enter wallet encryption password (min. length 16, max. 32): ', confirm=True, soft_quite=True)
-			while (len(newvv)<16  or '&' in newvv ) and newvv.lower() not in ['q','']:
+			while (len(newvv)<16  or '"' in newvv or "'" in newvv ) and newvv.lower() not in ['q','']:
 				if len(newvv)<16:
 					print('Password ['+newvv+'] length is '+str(len(newvv))+' < 16, try again or quit...')
 				else:
-					print('Password ['+newvv+'] contains forbidden character [&], try again or quit...')
+					print('Password ['+newvv+'] contains forbidden character [",\'], try again or quit...')
 					
 				newvv=iop.input_prompt('Enter wallet encryption password (min. length 16, max. 32): ', confirm=True, soft_quite=True)
 			
@@ -262,8 +262,8 @@ def edit_app_settings(json_conf,pswd):
 		else:				
 			newvv=iop.input_prompt('Enter new value (enter for empty): ', confirm=True, soft_quite=True)
 			
-			while nameii[0] in ["outgoing_encryption_key","incoming_encryption_key","gpg_password"] and '&' in newvv:
-				print('Password  or key ['+newvv+'] contains forbidden character [&], try again or quit...')
+			while nameii[0] in ["outgoing_encryption_key","incoming_encryption_key","gpg_password"] and ('"' in newvv or "'" in newvv):
+				print('Password  or key ['+newvv+'] contains forbidden character [",\'], try again or quit...')
 				newvv=iop.input_prompt('Enter new value (enter for empty): ', confirm=True, soft_quite=True)
 			
 		json_conf[nameii[0]]=newvv
@@ -285,11 +285,11 @@ def read_app_settings(selected_mode,init_pass=''):
 		os.mkdir('tmp')
 		
 	
-	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption"]
+	set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification","wallet_encryption","active_consolidation_address"]
 	
 	# set_name=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key","incoming_mail_sender_email","incoming_mail_title","wallet_secret_key","gpg_password","incoming_tx_notification","staking_summary_notification"]
 	
-	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional","off","off",""]
+	set_value=["my@email","*****","imap.gmail.com","smtp.gmail.com","1","24","aes256,pgp","keyin","aes256,pgp","keyout","optional","optional","optional","semioptional","off","off","",""]
 	
 	musthave=['email_addr',"email_password","imap_addr","smtp_addr","tx_amount_limit","tx_time_limit_hours","outgoing_encryption_type","outgoing_encryption_key","incoming_encryption_type","incoming_encryption_key"]
 	
