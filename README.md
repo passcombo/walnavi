@@ -17,7 +17,8 @@ Should work on both linux and Windows
 
 New features (2020/07):
 1. staking reports on email for VRSC
-2. encryption wallet option when shutting down the app.
+2. encryption wallet option when shutting down the app
+3. consolidation option - choosing owned address to easy redirect change amounts (protecting from loosing change on random not backed up address)
 
 Features:
 1. address book with aliases
