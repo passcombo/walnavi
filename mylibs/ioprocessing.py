@@ -335,12 +335,12 @@ def manage_keys(passphrase,selcmd): #["gen-key","import","export","export-secret
 	elif selcmd=="gen-key":
 		print('')
 
-	cmddict={"gen-key":'gpg --pinentry loopback --passphrase '+passphrase+' --gen-key', 
+	cmddict={"gen-key":'gpg --pinentry loopback --passphrase "'+passphrase+'" --gen-key', 
 			"export":'gpg --export --armor '+gpguid+' > '+exp_dir_file, 
-			"export-secret":'gpg --pinentry loopback --passphrase '+passphrase+' --export-secret-keys '+gpguid+' > '+exp_dir_file, 
-			"import":'gpg --pinentry loopback --passphrase '+passphrase+' --import '+imp_dir_file, 
+			"export-secret":'gpg --pinentry loopback --passphrase "'+passphrase+'" --export-secret-keys '+gpguid+' > '+exp_dir_file, 
+			"import":'gpg --pinentry loopback --passphrase "'+passphrase+'" --import '+imp_dir_file, 
 			"delete-pub-key":'gpg --delete-keys '+gpguid, 
-			"delete-priv-key":'gpg --passphrase '+passphrase+' --delete-secret-keys '+gpguid}
+			"delete-priv-key":'gpg --passphrase "'+passphrase+'" --delete-secret-keys '+gpguid}
 	print(cmddict[selcmd])
 	str_rep=subprocess.getoutput(cmddict[selcmd])
 	print('Exported key '+gpguid+' to my_files directory: '+exp_dir_file)
@@ -842,8 +842,8 @@ def ask_password(config_file=''): # mode = wallet or deamon
 		if pp=='q':
 			exit()
 			
-		if '&' in pp:
-			print('Password or key ['+pp+'] contains forbidden character [&], try again or quit...')
+		if '"' in pp or "'" in pp:
+			print('Password or key ['+pp+'] contains forbidden character [",\'"], try again or quit...')
 			continue
 		
 		return pp
@@ -883,10 +883,10 @@ def encr_msg(str_cont,encr_type,keyorpass,internal_id_str): # fnam should be ind
 		os.mkdir(os.path.join('archive','sent'))
 		
 	if encr_type=='aes256':
-		gpgstr="gpg --cipher-algo AES256 --pinentry loopback --passphrase " # was "gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "
+		gpgstr='gpg --cipher-algo AES256 --pinentry loopback --passphrase "' # was "gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "
 		if tmpfile=='':
 			tmpfile=createtmpfile(str_cont)
-		gpg_tmp=gpgstr+keyorpass+" -o "+fname+" -c "+tmpfile
+		gpg_tmp=gpgstr+keyorpass+'" -o '+fname+" -c "+tmpfile
 		
 		# print('encrypting ... 760 '+gpg_tmp)
 		str_rep=subprocess.getoutput(gpg_tmp)
@@ -895,7 +895,7 @@ def encr_msg(str_cont,encr_type,keyorpass,internal_id_str): # fnam should be ind
 		# gpg -a -r konrad.kwaskiewicz@gmail.com -o zxcvzxcv.txt -e cel.py
 		if tmpfile=='':
 			tmpfile=createtmpfile(str_cont)
-		gpg_tmp="gpg -r "+keyorpass+" -o "+fname+" -e "+tmpfile # was "gpg -a -r "
+		gpg_tmp='gpg -r "'+keyorpass+'" -o '+fname+" -e "+tmpfile # was "gpg -a -r "
 		str_rep=subprocess.getoutput(gpg_tmp)
 		
 	print(str_rep)
@@ -911,14 +911,14 @@ def encr_msg(str_cont,encr_type,keyorpass,internal_id_str): # fnam should be ind
 def saving_encr_cred(json_str,fname,pp):
 
 	#gpg --cipher-algo AES256 
-	gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "
+	gpgstr='gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "'
 
 	if os.path.exists(fname):
 		os.remove(fname)
 
 	print('Saving encrypted credentials')
 	tmpfile=createtmpfile(json_str)
-	gpg_tmp=gpgstr+pp+" -o "+fname+" -c "+tmpfile
+	gpg_tmp=gpgstr+pp+'" -o '+fname+" -c "+tmpfile
 	print('Encrypting using gnupg',gpg_tmp)
 	str_rep=subprocess.getoutput(gpg_tmp)
 	print(str_rep)
@@ -978,7 +978,7 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 		try:
 			gpgstr="gpg -o "+outputfile+" -d "+decr_file_path
 			if gpgpass!='':
-				gpgstr="gpg --pinentry loopback --passphrase "+gpgpass+" -o "+outputfile+" -d "+decr_file_path
+				gpgstr='gpg --pinentry loopback --passphrase "'+gpgpass+'" -o '+outputfile+" -d "+decr_file_path
 								
 			str_rep=subprocess.getoutput(gpgstr)
 			
@@ -998,9 +998,9 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 			aes256pp=input_prompt(propmtstr="Enter password to decrypt message: ", confirm=False, soft_quite=True)
 		
 		if aes256pp!='':
-			gpgstr="gpg -a --pinentry loopback --passphrase "+aes256pp+" -o "+outputfile+" -d "+decr_file_path
+			gpgstr='gpg -a --pinentry loopback --passphrase "'+aes256pp+'" -o '+outputfile+" -d "+decr_file_path
 			# gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "+aes256pp_ajd+" -o "+tmpdecr+" -d "+msg_cont
-			print('cmd847',gpgstr)
+			# print('cmd847',gpgstr)
 			str_rep=subprocess.getoutput(gpgstr)
 			# print(gpgstr)
 			print(str_rep)
@@ -1030,9 +1030,9 @@ def decr_msg2(msg_id,pp,msg_cont,gpgpass='',aes256pp='',print_content=False):
 
 def decrypt_cred(pp,newest_file):
 
-	gpgstr="gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "
+	gpgstr='gpg --cipher-algo AES256 -a --pinentry loopback --passphrase "'
 
-	return subprocess.getoutput(gpgstr+pp+" -d "+newest_file)
+	return subprocess.getoutput(gpgstr+pp+'" -d '+newest_file)
 
 	
 	
