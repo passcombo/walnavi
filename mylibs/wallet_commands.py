@@ -614,9 +614,7 @@ def get_all_addr(CLI_STR): # addr_list, addr_type=get_all_addr(CLI_STR) -> alias
 	addr_types={}
 	
 	r1=subprocess.getoutput(CLI_STR+" "+'listaddressgroupings')
-	# r1=subprocess.getoutput(CLI_STR+" "+'listreceivedbyaddress 0 true true')
-	# print('\n\n\n',r1,'\n\n\n')
-	# r1=subprocess.getoutput(CLI_STR+" "+'getaddressesbyaccount ""')
+
 	a1=json.loads(r1)	
 	
 	
@@ -658,7 +656,7 @@ def get_all_addr(CLI_STR): # addr_list, addr_type=get_all_addr(CLI_STR) -> alias
 	
 	
 
-def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=False):
+def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=False, above_amount=-1): #0.0001
 
 	addr_list, addr_type=get_all_addr(CLI_STR)
 	alias_map=address_aliases(addr_list)
@@ -725,7 +723,12 @@ def get_wallet(CLI_STR,only_addr_list=False,or_addr_amount_dict=False, both=Fals
 	for i in sorted(enumerate(amounts), key=lambda x:x[1], reverse=True):
 		ii=i[0]
 		
-		wl_str.append(" "+alias_map[wl[ii]['addr']]+" | {:.8f}".format(wl[ii]['confirmed']+wl[ii]['unconfirmed'])+" | "+wl[ii]['addr'] )
+		tmp_total=wl[ii]['confirmed']+wl[ii]['unconfirmed']
+		
+		if tmp_total<=above_amount:
+			continue
+		
+		wl_str.append(" "+alias_map[wl[ii]['addr']]+" | {:.8f}".format(tmp_total)+" | "+wl[ii]['addr'] )
 		if wl[ii]['unconfirmed']>0:
 			wl_str.append("   - confirmed {:.8f}".format(wl[ii]['confirmed']) )
 			wl_str.append("   - unconfirmed {:.8f}".format(wl[ii]['unconfirmed']) )
@@ -864,45 +867,42 @@ def isaddrvalid(CLI_STR,addr):
 # if from list =[all] - take all
 # if to_addr=any - take any z addr, if nonexistent - create one
 # if list = aliast - replace with addr				
-def merge_to(CLI_STR,from_dict,to_addr): 
+# def merge_to(CLI_STR,from_dict,to_addr): 
 	
-	alias_map=address_aliases(get_wallet(CLI_STR,True))
+	# alias_map=address_aliases(get_wallet(CLI_STR,True))
 	
 	
-	if to_addr in alias_map.values(): # addr_to is alias!
-		print(' alias detected')
-		to_addr=aliast_to_addr(alias_map,to_addr)	
-	vv,isz=isaddrvalid(CLI_STR,to_addr)
-	# print(740,vv,isz)
-	if vv==False:
-		return 'Not valid to_addr '+to_addr
+	# if to_addr in alias_map.values(): # addr_to is alias!
+		# print(' alias detected')
+		# to_addr=aliast_to_addr(alias_map,to_addr)	
+	# vv,isz=isaddrvalid(CLI_STR,to_addr) 
+	# if vv==False:
+		# return 'Not valid to_addr '+to_addr
 	
-	tmpstr='['
+	# tmpstr='['
 	
-	for fl,flal in from_dict.items():
+	# for fl,flal in from_dict.items():
 	
-		if fl in alias_map.values(): # addr_to is alias!
-			print(' alias detected')
-			fl=aliast_to_addr(alias_map,fl)	
+		# if fl in alias_map.values(): # addr_to is alias!
+			# print(' alias detected')
+			# fl=aliast_to_addr(alias_map,fl)	
+			 
+		# vv,isz=isaddrvalid(CLI_STR,fl)
+		# if vv:
+			# tmpstr+='"'+fl+'",'
+		# else:
+			# print('Skip bad addr ',fl)	
+	
+	# tmpstr+=']'
+	# tmpstr=tmpstr.replace(',]',']')
 			
-		#validate addr on the list
-		vv,isz=isaddrvalid(CLI_STR,fl)
-		if vv:
-			tmpstr+='"'+fl+'",'
-		else:
-			print('Skip bad addr ',fl)	
-	
-	tmpstr+=']'
-	tmpstr=tmpstr.replace(',]',']')
-			
-	tmpstr=tmpstr.replace('"','\\"')
+	# tmpstr=tmpstr.replace('"','\\"')
 		
-	tmp_str=CLI_STR+" "+'z_mergetoaddress ' + tmpstr +' '+to_addr
-	# print(tmp_str)
-			
-	tmp=subprocess.getoutput(tmp_str)
+	# tmp_str=CLI_STR+" "+'z_mergetoaddress ' + tmpstr +' '+to_addr
+	 	
+	# tmp=subprocess.getoutput(tmp_str)
 	
-	return tmp
+	# return tmp
 	
 	
 				
@@ -930,12 +930,12 @@ def get_any_zaddr(FEE,CLI_STR):
 			return fee_v_addr
 			
 			
-def get_status(CLI_STR):
+def get_status(CLI_STR,addr_balance_more=-1):
 
 	tmp=subprocess.getoutput(CLI_STR+" "+"getblockcount" )
 	# print("Current block: "+str(tmp))
 
-	return "Current block: "+str(tmp)+'\n\n'+get_wallet(CLI_STR)			
+	return "Current block: "+str(tmp)+'\n\n'+get_wallet(CLI_STR, above_amount=addr_balance_more)			
 	
 	
 	
@@ -1069,9 +1069,14 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 	
 	if cmdsplit[0]=='merge': # in ucmd.lower():
 		print()
+	
+	elif "balance"==cmdsplit[0]:
+			
+		limav='\n\nApp current limit: '+str(get_available_limited_balance(DEAMON_DEFAULTS,currency_name))+'\n'
 		
+		return get_status(CLI_STR,FEE)+limav	
 
-	elif "status"==cmdsplit[0]:
+	elif "balance0"==cmdsplit[0]:
 			
 		limav='\n\nApp current limit: '+str(get_available_limited_balance(DEAMON_DEFAULTS,currency_name))+'\n'
 		
@@ -1208,10 +1213,12 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 			else:
 				send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'}]'
 		else:
-			if left_balance>0.00000001:
-				send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'},{"address":"'+str(addr_from)+'","amount":'+str(left_balance)+'}]'
-			else:
-				send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'}]'
+			# if left_balance>0.00000001:
+				# send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'},{"address":"'+str(addr_from)+'","amount":'+str(left_balance)+'}]'
+			# else:
+				# send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'}]'
+			# now change is served by consolidation option
+			send_js_str='[{"address":"'+str(addr_to)+'","amount":'+str(amount)+'}]'
 			
 		# print(send_js_str)
 		send_js_str=send_js_str.replace('"','\\"')
