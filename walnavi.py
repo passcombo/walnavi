@@ -1,8 +1,4 @@
 # args: [wal/de] password curr[vrsc/arrr] [hide/null]
-# todo:
-# -- wallet_all - display all addr including zero balances
-# -- wallet status - display only balances > default fee
-# -- mark addr backed up - non-backed-up addr will get auto tx to main backed up wallet
 
 import os
 import smtplib
@@ -45,6 +41,27 @@ def printsleep(sleep_time,print_char='.'):
 		if sleep_time%2==0:
 			print(print_char,end='', flush=True)
 
+			
+			
+def wallet_consolidation(CLI_STR, json_conf, FEE):
+	alias_map, addr_amount_dict = wallet_commands.get_wallet(CLI_STR, False, False, True)
+	cc=0
+	 
+	for aa in addr_amount_dict:
+		if aa!=json_conf["active_consolidation_address"] and addr_amount_dict[aa]['confirmed']>FEE:
+			
+			tmp_consol_str=CLI_STR+' z_sendmany '+'"__fromaddr__" "[{\\"address\\":\\"__toaddr__\\",\\"amount\\":__amount__}]" '+str(1)+' '+str(FEE)
+			tmp_am=round(addr_amount_dict[aa]['confirmed']-FEE,8)
+			tmp_consol_str=tmp_consol_str.replace('__fromaddr__',aa).replace('__toaddr__',json_conf["active_consolidation_address"]).replace('__amount__',str(tmp_am))
+			print(tmp_consol_str)
+			 
+			consol_opid=subprocess.getoutput(tmp_consol_str)
+			print(consol_opid)
+			cc+=1
+			time.sleep(0.1)			
+			
+	if cc==0:
+		print('No amounts to consolidate.')
 
 			
 def my_exit(json_conf, selcur, currency_name, CLI_STR):
@@ -155,8 +172,6 @@ if __name__=='__main__':
 	json_conf, pswd=load_settings.read_app_settings(selected_mode,init_pass) #json_conf["wallet_secret_key"]
 	
 	
-
-	
 	print_cond=True
 	if selected_mode=='deamon':
 	
@@ -205,8 +220,6 @@ if __name__=='__main__':
 		# print('decryption not needed')
 	
 	
-	
-	
 	ac_params_add_node=''
 	
 	if selcur['currency-conf']["ac_params"].strip()!='':
@@ -238,9 +251,9 @@ if __name__=='__main__':
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust cli for specified path
 		CLI_STR+=' -datadir="'+selcur['currency-conf']["datadir"]+'"'
 
-	# print(171)
-	# my_exit(json_conf, selcur, cur_name, CLI_STR)
 	
+		
+		
 	# later perform only when >59 min since last file update
 	# print(146)
 #	wallet_commands.get_staked_sum( CLI_STR, json_conf["email_addr"], json_conf["email_password"], 'myself', json_conf["email_addr"] )
@@ -372,10 +385,40 @@ if __name__=='__main__':
 
 	#####################################################################
 	####################### SYNCED	
+	
+	
+	
+	set_consolidation_on=False
+	
+	if json_conf["active_consolidation_address"]=="":
+		print(colored("\n***\nIT IS STRONGLY SUGGESTED TO SET UP ACTIVE CONSOLIDATION ADDRESS\n***", 'red',attrs=['bold']))
+		print(colored("ANY CHANGE RESTING ON RANDOM ADDRESS WILL BE MOVED TO THE SPECIFIED MAIN ADDRESS", 'red',attrs=['bold']))
+		print(colored("TO PROTECT FROM RANDOM AMOUNT LOSS", 'red',attrs=['bold']))
+		print(colored("THIS SHOULD BE YOUR MAIN WALLET ADDRESS", 'red',attrs=['bold']))
+		
+	else: #check address is correct (comes from this wallet)
+		alias_map, addr_amount_dict = wallet_commands.get_wallet(CLI_STR, False, False, True)
+		
+		if json_conf["active_consolidation_address"] not in addr_amount_dict:
+			print(colored("YOUR CONSOLIDATION ADDRESS", 'yellow',attrs=['bold']))
+			print(colored(json_conf["active_consolidation_address"], 'red',attrs=['bold']))
+			print(colored('DOES NOT MATCH ANY OF YOUR WALLET ADDRESS', 'yellow',attrs=['bold']))
+			print(colored('CONSOLIDATION WILL NOT WORK', 'yellow',attrs=['bold']))
+			print(colored('PLEASE CORRECT YOUR ADDRESS or type space to turn consolidation off and not see this warning again.', 'yellow',attrs=['bold']))
+		else:
+			print(colored('CONSOLIDATION ADDRESS CORRECT', 'green',attrs=['bold']))
+			print(colored(json_conf["active_consolidation_address"], 'green',attrs=['bold']))
+			print(colored('CONSOLIDATION IS ON', 'green',attrs=['bold']))
+			print('In wallet mode use command [consolidate] to transfer all changes to main address. It will also run once on each app start')
+			print('In deamon mode it will check for automatic consolidation every iteration.')
+			set_consolidation_on=True
+			
+			
 
 	COMMANDS=list(set(["help"
 			, "help COMMAND"
-			, "status"
+			, "balance"
+			, "balance0"
 			# ,"wallet"
 			,"newzaddr"
 			,"new_taddr" 
@@ -393,6 +436,9 @@ if __name__=='__main__':
 		COMMANDS.append("editappsettings")
 		print('\n Wallet mode allows to edit address book and app settings.')
 		
+	if set_consolidation_on and selected_mode=='wallet':
+		COMMANDS.append("consolidate")
+		
 	if selcur['currency-conf']['ac_name']=='VERUS':
 		COMMANDS.append("stake")
 		COMMANDS.append("stakestop")
@@ -409,14 +455,15 @@ if __name__=='__main__':
 
 	CMD_HELP={"COMMAND":"EXAMPLE:\nhelp send"
 			, "send":"EXAMPLE:\nsend from=zs1kp6dthe7sperd7n47cm6du4xd3q3kwc785dmz4pyc47xawydygy9ku5y3ha24pspdra4vygk04c to=zs19t5wmas587nvnaw2m5g00vky6v07jyfld2y90l3yj2gsj74qfsmck2szvhr5vjvz0f5vkq4uv8q amount=0.001 \n # you may also use aliasses like:\n send from=zs104c to=zs1v8q amount=0.002 or even shorter send fr=zs104c to=zs1v8q am=0.002"
-			, "status":"Show block number and balances"
+			, "balance":"Show block number and balances > FEE ["+str(FEE)+"]"
+			, "balance0":"Show block number and balances including addresses with zero balance."
 			, "stop":"Stop komodod/verusd and exit script"
 			, "exit":"Exit script without stopping komodod"
 			, "valaddr":"EXAMPLE:\nvaladdr zs19t5wmas587nvnaw2m5g00vky6v07jyfld2y90l3yj2gsj74qfsmck2szvhr5vjvz0f5vkq4uv8q"}
 		
 	if deamon_warning not in zxc:
 		
-		print(wallet_commands.get_status(CLI_STR))
+		print(wallet_commands.get_status(CLI_STR,FEE))
 		print( msgproc.helporcmd("help",COMMANDS,CMD_HELP,False) )
 		
 		
@@ -440,9 +487,16 @@ if __name__=='__main__':
 		
 	if os.path.exists('_DELETE_TO_STOP_'):
 		print('Background mode ... ')
+		
+		
+	if set_consolidation_on:
+		print('Initial consolidation run:')
+		# run through all addresse with nonzero balances
+		wallet_consolidation(CLI_STR, json_conf, FEE)
+				
+				
 					
 	while deamon_warning not in zxc: # and citer>0: 
-
 
 		if selected_mode=='wallet':	
 			wallet_mode_limits={}
@@ -467,21 +521,32 @@ if __name__=='__main__':
 			
 			if user_cmd!='':
 			
-				if user_cmd.lower()=='stop':
+				if 'consolidate' in COMMANDS and user_cmd.lower() in ['cons', 'consolidate']:
+					wallet_consolidation(CLI_STR, json_conf, FEE)
+			
+				elif user_cmd.lower()=='stop':
 					my_exit(json_conf, selcur, cur_name, CLI_STR)
+				
+				else:				
+					cmd_res=msgproc.cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,json_conf,CLI_STR,pswd,wallet_mode_limits)
 					
-				cmd_res=msgproc.cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,json_conf,CLI_STR,pswd,wallet_mode_limits)
-				
-				if 'CONFIRM OPERATION:: ' in cmd_res:
-					toconfstr=cmd_res
-					cmd_res=format_confirmt_op(cmd_res,True)
-				else:
-					toconfstr=''
-				
-				print(cmd_res)
+					if 'CONFIRM OPERATION:: ' in cmd_res:
+					
+						print(cmd_res)
+						exit()
+					
+						toconfstr=cmd_res
+						cmd_res=format_confirmt_op(cmd_res,True)
+					else:
+						toconfstr=''
+					
+					print(cmd_res)
 		
 		elif selected_mode=='deamon':
-		
+			
+			if set_consolidation_on:
+				print('Deamon consolidation run.')
+				wallet_consolidation(CLI_STR, json_conf, FEE)
 		
 			# citer-=1
 			deamon_subject='Cogito ergo sum'
