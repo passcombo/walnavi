@@ -18,7 +18,8 @@ import traceback
 import mylibs.ioprocessing as iop
 import re
 import os
-
+import socket
+socket.setdefaulttimeout(15)
 
 def get_new_to_addr_list(my_addr,msgobj):
 
@@ -263,7 +264,7 @@ def send_email(smtp_addr,sender_email, password, sender_name, receiver_email, fi
 		
 	context = ssl.create_default_context() # Create secure connection with server and send email
 	
-	with smtplib.SMTP_SSL(smtp_addr, 465, context=context) as server:
+	with smtplib.SMTP_SSL(smtp_addr, 465, timeout=15, context=context) as server:
 	
 		server.login(sender_email, password)		
 		server.send_message( message, sender_email,  receiver_email )		
