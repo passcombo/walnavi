@@ -174,7 +174,7 @@ def nocss_html_table(lol):
 				x+='<td style="border: 1px solid navy;padding: 2px;position: relative;"> '+ str(kk) +' </td>'
 				
 		if len(ww)>1 and ii>0:
-			x+='<td style="border: 1px solid navy;padding: 2px;position: relative;text-align: left;"> '+'&#x25AE;'.join(['' for l in range( val_list[ii-1] )])+' </td>' #'='.join(['' for l in range( val_list[ii-1] )])
+			x+='<td style="border: 1px solid navy;padding: 2px;position: relative;text-align: left;"> '+'&#x25AE;'.join(['' for l in range( val_list[ii-1]+1 )])+' </td>' #'='.join(['' for l in range( val_list[ii-1] )])
 			x+='</tr>\n'
 		elif len(ww)>1 and ii==0:
 			x+='<th style="border: 1px solid navy;padding: 4px;padding-top: 6px;padding-bottom: 3px;text-align: center;background-color: blue;color: white;"> chart </th></tr>'
