@@ -19,6 +19,8 @@ New features (2020/07):
 1. staking reports on email for VRSC
 2. encryption wallet option when shutting down the app
 3. consolidation option - choosing owned address to easy redirect change amounts (protecting from loosing change on random not backed up address)
+4. password change option
+5. added shielding option
 
 Features:
 1. address book with aliases
