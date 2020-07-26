@@ -8,6 +8,8 @@ import json
 # import mylibs.helpers as helpers
 import mylibs.ioprocessing as iop
 import mylibs.wallet_commands as wallet_commands
+import datetime
+import traceback
 
 
 def encrypt_wallet(data_dir_path,wal_encr_pass):
@@ -212,6 +214,27 @@ def print_current_settings(set_name,json_conf,set_name_alia=[]):
 			else:
 				print('['+jct+']['+vv+']')
 			
+
+def save_app_settings_new_password(json_conf,pswd):
+
+	print('Enter new password for config file encryption.')
+	newpp=iop.ask_password()
+	
+	if len(newpp)<2:
+		print('Password too short - quit')
+		return
+
+	newest_date, newest_file, filed = iop.get_config_file()	
+	old_file=newest_file
+	ddate=datetime.datetime.now()
+	newest_file=os.path.join('config',"gnupg_deamon_cfg_"+ddate.strftime('%Y-%m-%dh%Hm%Ms%S')+".txt")
+	
+	print('Encrypting config with new password ['+newpp+'] to file ['+newest_file+']')
+	print('Previous config file with old password ['+old_file+'] - delete it if it is unnecessary.')
+		
+	iop.saving_encr_cred( json.dumps(json_conf) , newest_file, newpp)
+	print('App settings changed - exiting. Please start the app again.')
+	exit()
 			
 
 def edit_app_settings(json_conf,pswd):
@@ -323,11 +346,17 @@ def read_app_settings(selected_mode,init_pass=''):
 				str_rep=iop.decrypt_cred(pp,newest_file) 
 				if 'failed' in str_rep:
 					print("Your password didn't match the config file ... Try another password or quit [q]")
+					if init_pass!='':
+						print('Wrong password for config file '+newest_file)
+						exit()
 					continue
 				else:
 					decr_str=str_rep.split(iop.lorem_ipsum())
 					if len(decr_str)<2:
 						print("Your password didn't match the config file ... Try another password or quit [q]")
+						if init_pass!='':
+							print('Wrong password for config file '+newest_file)
+							exit()
 						continue
 						
 					decr_str=decr_str[1]
@@ -336,6 +365,10 @@ def read_app_settings(selected_mode,init_pass=''):
 			except:
 				err_track = traceback.format_exc()
 				print(err_track)
+				if init_pass!='':
+					print('Wrong password for config file '+newest_file)
+					exit()
+					
 				print("Your password didn't match the config file ... Try another password or quit [q]")
 				init_pass=''
 			
