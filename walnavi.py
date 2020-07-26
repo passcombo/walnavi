@@ -1,4 +1,4 @@
-# args: [wal/de] password curr[vrsc/arrr] [hide/null]
+# optional args: [wal/de] password curr[vrsc/arrr] [hide/null]
 
 import os
 import smtplib
@@ -53,7 +53,7 @@ def wallet_consolidation(CLI_STR, json_conf, FEE):
 			tmp_consol_str=CLI_STR+' z_sendmany '+'"__fromaddr__" "[{\\"address\\":\\"__toaddr__\\",\\"amount\\":__amount__}]" '+str(1)+' '+str(FEE)
 			tmp_am=round(addr_amount_dict[aa]['confirmed']-FEE,8)
 			tmp_consol_str=tmp_consol_str.replace('__fromaddr__',aa).replace('__toaddr__',json_conf["active_consolidation_address"]).replace('__amount__',str(tmp_am))
-			print(tmp_consol_str)
+			# print(tmp_consol_str)
 			 
 			consol_opid=subprocess.getoutput(tmp_consol_str)
 			print(consol_opid)
@@ -429,11 +429,13 @@ if __name__=='__main__':
 			, "valaddr"
 			,"unspent"
 			, "dispaddrbook"
+			, "shield"
 			])) 
 			
 	if selected_mode=='wallet':
 		COMMANDS.append("addrbook")
 		COMMANDS.append("editappsettings")
+		COMMANDS.append("changeapppassword")
 		print('\n Wallet mode allows to edit address book and app settings.')
 		
 	if set_consolidation_on and selected_mode=='wallet':
@@ -459,6 +461,7 @@ if __name__=='__main__':
 			, "balance0":"Show block number and balances including addresses with zero balance."
 			, "stop":"Stop komodod/verusd and exit script"
 			, "exit":"Exit script without stopping komodod"
+			, "shield":"Shield unshielded (staked) coins, maximum 50 utxos at once. Must specify own address. Example:\nshield zs19t5wmas587nvnaw2m5g00vky6v07jyfld2y90l3yj2gsj74qfsmck2szvhr5vjvz0f5vkq4uv8q"
 			, "valaddr":"EXAMPLE:\nvaladdr zs19t5wmas587nvnaw2m5g00vky6v07jyfld2y90l3yj2gsj74qfsmck2szvhr5vjvz0f5vkq4uv8q"}
 		
 	if deamon_warning not in zxc:
@@ -573,6 +576,7 @@ if __name__=='__main__':
 			title_contains=json_conf["incoming_mail_title"]
 			
 			def_opt={'last_msg_limit':555,'from':'any', 'subject':'any', 'only_new':'yes'}
+			
 			if title_contains!='':
 				def_opt['subject']=title_contains
 			if sender_email!='':
@@ -583,7 +587,7 @@ if __name__=='__main__':
 			
 			potlist=['','','','']
 			
-			if json_conf["staking_summary_notification"]=="on":
+			if json_conf["staking_summary_notification"].lower()=="on":
 				wallet_commands.get_staked_sum( CLI_STR, json_conf["email_addr"], json_conf["email_password"], 'myself', json_conf["email_addr"] )
 	
 			
@@ -741,9 +745,11 @@ if __name__=='__main__':
 				# os.mkdir('_DEAMON_STOP_DONE_')
 				my_exit(json_conf, selcur, cur_name, CLI_STR)
 				
-		if selected_mode=='deamon':
-			conditional_print('Next iteration',print_cond)	
-			time.sleep(10)
+		# if selected_mode=='deamon':
+			# conditional_print('Next iteration',print_cond)	
+			print('Next iteration')
+			time.sleep(deamon_refresh_basic)
+			
 		zxc=str(subprocess.getoutput(CLI_STR+" getinfo"))
 
 		
