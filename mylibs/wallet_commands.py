@@ -1324,7 +1324,48 @@ def process_cmd(addr_book,FEE,DEAMON_DEFAULTS,CLI_STR,ucmd):
 		opstat=subprocess.getoutput(CLI_STR+" setgenerate false")
 		# print(opstat)
 		return 'Staking OFF'
-
+	
+	elif cmdsplit[0]=="shield":
+		
+		# check for arg 1
+		if len(cmdsplit)<2:
+			return 'Address missing'
+			
+		cmdsplit=ucmd.split()
+		addr_to=cmdsplit[1]
+		
+		addresses_tmp=get_wallet(CLI_STR,True)
+		
+		if addr_to not in addresses_tmp.keys():
+			
+			alias_map=address_aliases(addresses_tmp)
+		
+			if addr_to in alias_map.values(): 
+				print(' alias detected')
+				addr_to=aliast_to_addr(alias_map,addr_to)
+			
+		# validate addr: cmdsplit[1]
+		vv,isz=isaddrvalid(CLI_STR,addr_to)
+		
+		if vv==False:
+			return 'Address ['+addr_to+'] not valid!'
+			
+		if isz==False:
+			return 'Address ['+addr_to+'] is not z-addr!'
+		
+		# run action
+		shield_str=CLI_STR+' z_shieldcoinbase "*" '+'"'+addr_to+'" '+str(FEE)
+		# print(shield_str)
+		# exit()
+		# return result
+		opstat=subprocess.getoutput(shield_str)
+		
+		opj=json.loads(opstat)
+		
+		str1='Shielding '+str(opj["shieldingUTXOs"])+' utxos of value '+str(opj["shieldingValue"])
+		str2='\nUtxos still available for shielding: '+str(opj["remainingUTXOs"])+' of value '+str(opj["remainingValue"])
+		return str1+str2
+		
 	# elif ucmd.lower()=="stop":
 		# clear_txid_logs(currency_name)
 		
