@@ -706,6 +706,7 @@ def get_config_file():
 	filed={}
 	newest_date=datetime.datetime.strptime('1981-01-01','%Y-%m-%d')
 	newest_file=''
+	print('Searching newest config file...')
 	
 	for ff in filelist:
 		# print(ff)
@@ -713,7 +714,7 @@ def get_config_file():
 			continue		
 		
 		if "gnupg_deamon_cfg_" in ff:
-			# print(ff)
+			print(ff)
 			x=re.sub(".*gnupg_deamon_cfg_", "", ff)
 			# print(x)
 			x=re.sub("\.txt*", "", x)
@@ -738,6 +739,8 @@ def get_config_file():
 		ddate=datetime.datetime.now()
 		newfname=os.path.join('config',"gnupg_deamon_cfg_"+ddate.strftime('%Y-%m-%dh%Hm%Ms%S')+".txt")
 		filed[newfname]=ddate
+	else:
+		print('Newest config file: '+newest_file)
 
 	return 	newest_date, newest_file, filed
 
