@@ -136,6 +136,10 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 		load_settings.edit_app_settings(DEAMON_DEFAULTS,pswd)
 		return ''
 		
+	elif cmd_name=='changeapppassword':
+		load_settings.save_app_settings_new_password(DEAMON_DEFAULTS,pswd)
+		return ''
+		
 	elif cmd_name in COMMANDS or is_special_cmd: #"send" in ucmd
 	
 #		print(114,cmd_name)
@@ -156,7 +160,7 @@ def cmd_process(user_cmd,COMMANDS,CMD_HELP,FEE,DEAMON_DEFAULTS,CLI_STR,pswd,wall
 			
 				tmp_deamon_defaults=DEAMON_DEFAULTS.copy()
 			
-				if cmd_name in ['send','status'] and len(wallet_mode_limits)>0:
+				if cmd_name in ['send','balance','balance0'] and len(wallet_mode_limits)>0:
 					# wallet mode chenge limits:
 					# DEAMON_DEFAULTS["tx_amount_limit"]=wallet_mode_limits["tx_amount_limit"]
 					# DEAMON_DEFAULTS["tx_time_limit_hours"]=wallet_mode_limits["tx_time_limit_hours"] 
