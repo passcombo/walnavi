@@ -1,4 +1,7 @@
-# optional args: [wal/de] password curr[vrsc/arrr] [hide/null]
+# args: [wal/de] password curr[vrsc/arrr] [hide/null]
+
+# add last stake block time datetime
+# last hour in table should be before now ()
 
 import os
 import smtplib
@@ -225,16 +228,17 @@ if __name__=='__main__':
 	if selcur['currency-conf']["ac_params"].strip()!='':
 		ac_params_add_node=selcur['currency-conf']["ac_params"]
 		
-	if "addnode" in selcur['currency-conf']["addnode"]:
-		if len(selcur['currency-conf']["addnode"])>0:
+	# if "addnode" in selcur['currency-conf']: #["addnode"]
+		# if len(selcur['currency-conf']["addnode"])>0:
 		
-			for an in selcur['currency-conf']["addnode"]:
-				ac_params_add_node+=' -addnode='+an
+			# for an in selcur['currency-conf']["addnode"]:
+				# ac_params_add_node+=' -addnode='+an
 		
 	FULL_DEAMON_PARAMS=[ seldeam['deamon-conf']['deamon-path'] ]
 	
 	if selcur['currency-conf']["ac_name"].strip() not in ['','VERUS']:
-		FULL_DEAMON_PARAMS=[ seldeam['deamon-conf']['deamon-path'] , "-ac_name="+selcur['currency-conf']["ac_name"]]
+		FULL_DEAMON_PARAMS=[  seldeam['deamon-conf']['deamon-path']  , "-ac_name="+selcur['currency-conf']["ac_name"]]
+		# FULL_DEAMON_PARAMS=[ '"'+seldeam['deamon-conf']['deamon-path']+'"' , "-ac_name="+selcur['currency-conf']["ac_name"]]
 		
 	
 	if len(ac_params_add_node.strip())>1:
@@ -243,15 +247,23 @@ if __name__=='__main__':
 	
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust data dir
 		FULL_DEAMON_PARAMS+=['-datadir='+selcur['currency-conf']["datadir"]]
+		# FULL_DEAMON_PARAMS+=['-datadir="'+selcur['currency-conf']["datadir"]+'"']
 
-	CLI_STR=seldeam['deamon-conf']["cli-path"]
+	CLI_STR= seldeam['deamon-conf']["cli-path"] 
+	# CLI_STR='"'+seldeam['deamon-conf']["cli-path"]+'"'
 	if selcur['currency-conf']["ac_name"].strip() not in ['','VERUS']:
 		CLI_STR+=" -ac_name="+selcur['currency-conf']["ac_name"]
 
 	if selcur['currency-conf']["datadir"].strip()!='': # adjust cli for specified path
-		CLI_STR+=' -datadir="'+selcur['currency-conf']["datadir"]+'"'
+		CLI_STR+=' -datadir='+selcur['currency-conf']["datadir"] 
+		# CLI_STR+=' -datadir="'+selcur['currency-conf']["datadir"]+'"'
 
+	# print(' '.join(FULL_DEAMON_PARAMS) )
+	# print(CLI_STR)
+	# exit()
 	
+	# zxc=subprocess.getoutput(' '.join(FULL_DEAMON_PARAMS) )
+	# print(zxc)
 		
 		
 	# later perform only when >59 min since last file update
@@ -273,7 +285,8 @@ if __name__=='__main__':
 		FEE=0.0001
 		
 		
-		
+	# print(FULL_DEAMON_PARAMS)
+	# print(CLI_STR)
 	#####################################################################
 	####################### VERIFY wallet is synced
 
@@ -289,11 +302,12 @@ if __name__=='__main__':
 		printsleep(30)
 		try:
 			zxc=subprocess.getoutput(CLI_STR+" getinfo")
+			# print(296,zxc)
 			while deamon_warning in zxc:
 				printsleep(10)
 				zxc=subprocess.getoutput(CLI_STR+" getinfo")
 		except:
-			print('157 exception')
+			# print('157 exception')
 			printsleep(10)
 			pass
 		# tmpi=60
@@ -315,7 +329,7 @@ if __name__=='__main__':
 		try:
 		
 			zxc=subprocess.getoutput(CLI_STR+" getinfo") # check wallet stat synced
-			# print(zxc)
+			print(zxc)
 			zxc=str(zxc)
 			if 'error message:' in zxc:
 				asdf=zxc.split('error message:')
@@ -390,28 +404,30 @@ if __name__=='__main__':
 	
 	set_consolidation_on=False
 	
-	if json_conf["active_consolidation_address"]=="":
-		print(colored("\n***\nIT IS STRONGLY SUGGESTED TO SET UP ACTIVE CONSOLIDATION ADDRESS\n***", 'red',attrs=['bold']))
-		print(colored("ANY CHANGE RESTING ON RANDOM ADDRESS WILL BE MOVED TO THE SPECIFIED MAIN ADDRESS", 'red',attrs=['bold']))
-		print(colored("TO PROTECT FROM RANDOM AMOUNT LOSS", 'red',attrs=['bold']))
-		print(colored("THIS SHOULD BE YOUR MAIN WALLET ADDRESS", 'red',attrs=['bold']))
+	if selcur['currency-conf']["ac_name"].strip()=='VERUS':
 		
-	else: #check address is correct (comes from this wallet)
-		alias_map, addr_amount_dict = wallet_commands.get_wallet(CLI_STR, False, False, True)
-		
-		if json_conf["active_consolidation_address"] not in addr_amount_dict:
-			print(colored("YOUR CONSOLIDATION ADDRESS", 'yellow',attrs=['bold']))
-			print(colored(json_conf["active_consolidation_address"], 'red',attrs=['bold']))
-			print(colored('DOES NOT MATCH ANY OF YOUR WALLET ADDRESS', 'yellow',attrs=['bold']))
-			print(colored('CONSOLIDATION WILL NOT WORK', 'yellow',attrs=['bold']))
-			print(colored('PLEASE CORRECT YOUR ADDRESS or type space to turn consolidation off and not see this warning again.', 'yellow',attrs=['bold']))
-		else:
-			print(colored('CONSOLIDATION ADDRESS CORRECT', 'green',attrs=['bold']))
-			print(colored(json_conf["active_consolidation_address"], 'green',attrs=['bold']))
-			print(colored('CONSOLIDATION IS ON', 'green',attrs=['bold']))
-			print('In wallet mode use command [consolidate] to transfer all changes to main address. It will also run once on each app start')
-			print('In deamon mode it will check for automatic consolidation every iteration.')
-			set_consolidation_on=True
+		if json_conf["active_consolidation_address"]=="":
+			print(colored("\n***\nIT IS STRONGLY SUGGESTED TO SET UP ACTIVE CONSOLIDATION ADDRESS\n***", 'red',attrs=['bold']))
+			print(colored("ANY CHANGE RESTING ON RANDOM ADDRESS WILL BE MOVED TO THE SPECIFIED MAIN ADDRESS", 'red',attrs=['bold']))
+			print(colored("TO PROTECT FROM RANDOM AMOUNT LOSS", 'red',attrs=['bold']))
+			print(colored("THIS SHOULD BE YOUR MAIN WALLET ADDRESS", 'red',attrs=['bold']))
+			
+		else: #check address is correct (comes from this wallet)
+			alias_map, addr_amount_dict = wallet_commands.get_wallet(CLI_STR, False, False, True)
+			
+			if json_conf["active_consolidation_address"] not in addr_amount_dict:
+				print(colored("YOUR CONSOLIDATION ADDRESS", 'yellow',attrs=['bold']))
+				print(colored(json_conf["active_consolidation_address"], 'red',attrs=['bold']))
+				print(colored('DOES NOT MATCH ANY OF YOUR WALLET ADDRESS', 'yellow',attrs=['bold']))
+				print(colored('CONSOLIDATION WILL NOT WORK', 'yellow',attrs=['bold']))
+				print(colored('PLEASE CORRECT YOUR ADDRESS or type space to turn consolidation off and not see this warning again.', 'yellow',attrs=['bold']))
+			else:
+				print(colored('CONSOLIDATION ADDRESS CORRECT', 'green',attrs=['bold']))
+				print(colored(json_conf["active_consolidation_address"], 'green',attrs=['bold']))
+				print(colored('CONSOLIDATION IS ON', 'green',attrs=['bold']))
+				print('In wallet mode use command [consolidate] to transfer all changes to main address. It will also run once on each app start')
+				print('In deamon mode it will check for automatic consolidation every iteration.')
+				set_consolidation_on=True
 			
 			
 
@@ -438,10 +454,10 @@ if __name__=='__main__':
 		COMMANDS.append("changeapppassword")
 		print('\n Wallet mode allows to edit address book and app settings.')
 		
-	if set_consolidation_on and selected_mode=='wallet':
+	if set_consolidation_on and selected_mode=='wallet' and selcur['currency-conf']["ac_name"].strip() =='VERUS':
 		COMMANDS.append("consolidate")
 		
-	if selcur['currency-conf']['ac_name']=='VERUS':
+	if selcur['currency-conf']["ac_name"].strip()=='VERUS':
 		COMMANDS.append("stake")
 		COMMANDS.append("stakestop")
 		
@@ -492,7 +508,7 @@ if __name__=='__main__':
 		print('Background mode ... ')
 		
 		
-	if set_consolidation_on:
+	if set_consolidation_on and selcur['currency-conf']["ac_name"].strip() =='VERUS':
 		print('Initial consolidation run:')
 		# run through all addresse with nonzero balances
 		wallet_consolidation(CLI_STR, json_conf, FEE)
@@ -751,10 +767,4 @@ if __name__=='__main__':
 			time.sleep(deamon_refresh_basic)
 			
 		zxc=str(subprocess.getoutput(CLI_STR+" getinfo"))
-
 		
-		
-		
-
-
-	
